@@ -174,10 +174,26 @@ export default function App() {
           base.content = 'Select an option';
           base.style = { ...base.style, width: '200px', height: '40px' };
       } else if (type === 'checkbox') {
-          base.style = { ...base.style, width: 'auto', height: 'auto' };
+          base.content = 'Checkbox Label';
+          base.style = { 
+            ...base.style, 
+            width: '100px', 
+            height: '20px',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: '8px'
+          };
           base.props.checked = false;
       } else if (type === 'switch') {
-          base.style = { ...base.style, width: 'auto', height: 'auto' };
+          base.content = 'Switch Label';
+          base.style = { 
+            ...base.style, 
+            width: '100px', 
+            height: '20px',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: '8px'
+          };
           base.props.checked = false;
       } else if (type === 'divider') {
           base.style = { 

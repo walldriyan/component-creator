@@ -46,9 +46,11 @@ export default function PropertiesPanel({ node, onChange, onStyleChange }: Prope
                </select>
              </div>
 
-             {(node.type === 'text' || node.type === 'button' || node.type === 'input' || node.type === 'textarea' || node.type === 'select') && (
+             {(node.type === 'text' || node.type === 'button' || node.type === 'input' || node.type === 'textarea' || node.type === 'select' || node.type === 'checkbox' || node.type === 'switch') && (
                <div>
-                 <label className="block text-xs font-medium text-gray-500 mb-1.5">{node.type === 'input' || node.type === 'textarea' ? 'Placeholder' : 'Content'}</label>
+                 <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                   {node.type === 'input' || node.type === 'textarea' ? 'Placeholder' : (node.type === 'checkbox' || node.type === 'switch' ? 'Label Text' : 'Content')}
+                 </label>
                  <input type="text" className={inputClass} value={node.content || ''} onChange={(e) => onChange({ content: e.target.value })} />
                </div>
              )}

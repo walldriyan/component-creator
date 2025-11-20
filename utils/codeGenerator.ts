@@ -119,9 +119,13 @@ const generateNode = (node: ComponentNode, indent: number = 0): string => {
       
       if (node.type === 'textarea') return `${spaces}<Textarea placeholder="${node.content || ''}" ${classNameProp} />`;
       
-      if (node.type === 'checkbox') return `${spaces}<Checkbox id="${node.id}" ${classNameProp} />`;
+      if (node.type === 'checkbox') {
+          return `${spaces}<div ${classNameProp}>\n${spaces}  <Checkbox id="${node.id}" ${node.props.checked ? 'defaultChecked' : ''} />\n${spaces}  <label htmlFor="${node.id}" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">${node.content || 'Checkbox'}</label>\n${spaces}</div>`;
+      }
       
-      if (node.type === 'switch') return `${spaces}<Switch id="${node.id}" ${classNameProp} />`;
+      if (node.type === 'switch') {
+          return `${spaces}<div ${classNameProp}>\n${spaces}  <Switch id="${node.id}" ${node.props.checked ? 'defaultChecked' : ''} />\n${spaces}  <label htmlFor="${node.id}" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">${node.content || 'Switch Label'}</label>\n${spaces}</div>`;
+      }
       
       if (node.type === 'divider') {
           const orientation = node.style.height && parseInt(node.style.height) > 10 ? 'orientation="vertical"' : '';

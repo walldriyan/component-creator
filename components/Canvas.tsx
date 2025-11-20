@@ -45,8 +45,7 @@ const getComponentClasses = (node: ComponentNode, isSelected: boolean) => {
     if (type === 'card') libStyles = "rounded-lg border text-slate-950 shadow-sm";
     if (type === 'input') libStyles = "flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
     if (type === 'textarea') libStyles = "flex min-h-[80px] w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
-    if (type === 'checkbox') libStyles = "h-4 w-4 shrink-0 rounded-sm border border-slate-900 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-slate-900 data-[state=checked]:text-slate-50";
-    if (type === 'switch') libStyles = "peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-slate-900 data-[state=unchecked]:bg-slate-200";
+    // Switch libStyles removed here as it is now a container. Specific styles applied in renderContent.
     if (type === 'select') libStyles = "flex h-10 w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1";
     if (type === 'divider') libStyles = "shrink-0 bg-slate-200";
   } 
@@ -261,8 +260,45 @@ const CanvasRenderer: React.FC<CanvasProps> = React.memo(({ node, selectedId, on
       if (node.type === 'button') return node.children.length > 0 ? null : <span className="pointer-events-none">{node.content}</span>;
       if (node.type === 'input') return <input disabled placeholder={node.content} className="w-full h-full bg-transparent outline-none pointer-events-none text-slate-500" />;
       if (node.type === 'textarea') return <textarea disabled placeholder={node.content} className="w-full h-full bg-transparent outline-none pointer-events-none text-slate-500 resize-none" />;
-      if (node.type === 'checkbox') return <div className="flex items-center justify-center pointer-events-none">{node.props.checked && <Check size={12} />}</div>;
-      if (node.type === 'switch') return <div className="h-5 w-5 rounded-full bg-white shadow-sm transition-all translate-x-0.5 data-[state=checked]:translate-x-5" data-state={node.props.checked ? 'checked' : 'unchecked'} />;
+      
+      if (node.type === 'checkbox') return (
+          <>
+            <div 
+                className={cn(
+                    "h-4 w-4 shrink-0 rounded-sm border border-slate-900 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center transition-colors",
+                    node.props.checked ? "bg-slate-900 text-slate-50" : "bg-white"
+                )}
+            >
+                {node.props.checked && <Check size={12} strokeWidth={3} />}
+            </div>
+            <span className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 pointer-events-none select-none truncate">
+                {node.content}
+            </span>
+          </>
+      );
+
+      if (node.type === 'switch') return (
+          <>
+             <div 
+                className={cn(
+                    "h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:opacity-50",
+                    node.props.checked ? "bg-slate-900" : "bg-slate-200"
+                )}
+                data-state={node.props.checked ? 'checked' : 'unchecked'}
+             >
+                 <div 
+                    className={cn(
+                        "pointer-events-none block h-4 w-4 rounded-full bg-white shadow-lg ring-0 transition-transform",
+                        node.props.checked ? "translate-x-4" : "translate-x-0"
+                    )} 
+                 />
+             </div>
+             <span className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 pointer-events-none select-none truncate">
+                {node.content}
+            </span>
+          </>
+      );
+      
       if (node.type === 'select') return <><span className="text-muted-foreground pointer-events-none">{node.content || 'Select...'}</span><ChevronDown size={16} className="opacity-50" /></>;
       
       // Fix: Render a much more visible divider in editor
@@ -319,6 +355,8 @@ const CanvasRenderer: React.FC<CanvasProps> = React.memo(({ node, selectedId, on
         onDragOver={handleDragOver}
         onDragLeave={() => setDragPosition(null)}
         onDrop={handleDrop}
+        // Add state attribute for checkbox container styling if needed, though most logic is now internal
+        data-state={node.props.checked ? 'checked' : 'unchecked'} 
       >
         {isSelected && ( <div className="absolute inset-0 ring-2 ring-blue-500 ring-offset-2 pointer-events-none z-20 rounded-[inherit]"></div> )}
         
