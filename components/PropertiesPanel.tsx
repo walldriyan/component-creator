@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { ComponentNode, LibraryType } from '../types';
-import { Settings2, Layout, Palette, Square, Star, Ban, MousePointerClick, Move, Code, TableProperties, MousePointer2, Plus, Trash2, Image as ImageIcon, Type, FileText, Server, Link as LinkIcon, CheckCircle, Users, ThumbsUp } from 'lucide-react';
+import { Settings2, Layout, Palette, Square, Star, Ban, MousePointerClick, Move, Code, TableProperties, MousePointer2, Plus, Trash2, Image as ImageIcon, Type, FileText, Server, Link as LinkIcon, CheckCircle, Users, ThumbsUp, List, AppWindow, MoreVertical } from 'lucide-react';
 
 interface PropertiesPanelProps {
   node: ComponentNode | null;
@@ -36,22 +36,13 @@ export default function PropertiesPanel({ node, onChange, onStyleChange }: Prope
   const inputClass = "w-full text-sm border border-gray-200 bg-[#fafafa] hover:bg-white focus:bg-white rounded-md p-2 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-gray-700";
   const sectionHeaderClass = "text-xs font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-gray-100 pb-2";
 
-  const handleJsonChange = (value: string) => {
+  const handleJsonChange = (value: string, propName: string = 'data') => {
       try {
           const parsed = JSON.parse(value);
-          onChange({ props: { ...node.props, data: parsed } });
+          onChange({ props: { ...node.props, [propName]: parsed } });
       } catch (e) {
           // Allow user to type invalid JSON while editing
       }
-  };
-
-  const handleAvatarImagesChange = (value: string) => {
-     try {
-         const parsed = JSON.parse(value);
-         onChange({ props: { ...node.props, images: parsed } });
-     } catch (e) {
-         // Allow typing
-     }
   };
 
   const addCustomColumn = () => {
@@ -188,7 +179,7 @@ export default function PropertiesPanel({ node, onChange, onStyleChange }: Prope
                         <textarea 
                             className={`${inputClass} font-mono text-xs h-28 resize-y`} 
                             defaultValue={JSON.stringify(node.props.images || [], null, 2)}
-                            onBlur={(e) => handleAvatarImagesChange(e.target.value)}
+                            onBlur={(e) => handleJsonChange(e.target.value, 'images')}
                             placeholder='["url1", "url2"]'
                         />
                     </div>
@@ -214,6 +205,77 @@ export default function PropertiesPanel({ node, onChange, onStyleChange }: Prope
                     <div>
                         <label className="block text-xs font-medium text-gray-500 mb-1.5">Views</label>
                         <input type="number" className={inputClass} value={node.props.views || 0} onChange={(e) => onChange({ props: { ...node.props, views: parseInt(e.target.value) } })} />
+                    </div>
+                </div>
+            </section>
+        )}
+
+         {/* Tabs Properties */}
+         {node.type === 'tabs' && (
+            <section>
+                <h3 className={sectionHeaderClass}><AppWindow size={14} /> Tabs Configuration</h3>
+                <div className="space-y-3">
+                    <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1.5">Tab Items (JSON)</label>
+                        <p className="text-[10px] text-blue-600 mb-1">Use 'icon' for dynamic icons.</p>
+                        <textarea 
+                            className={`${inputClass} font-mono text-xs h-40 resize-y`} 
+                            defaultValue={JSON.stringify(node.props.items || [], null, 2)}
+                            onBlur={(e) => handleJsonChange(e.target.value, 'items')}
+                            placeholder='[{"id":"1", "label":"Tab 1", "icon":"Home", "content":"Optional HTML"}]'
+                        />
+                    </div>
+                </div>
+            </section>
+        )}
+
+        {/* Dropdown Properties */}
+        {node.type === 'dropdown' && (
+             <section>
+                <h3 className={sectionHeaderClass}><MoreVertical size={14} /> Menu Configuration</h3>
+                <div className="space-y-3">
+                    <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1.5">Trigger Button Label</label>
+                        <input type="text" className={inputClass} value={node.props.label || ''} onChange={(e) => onChange({ props: { ...node.props, label: e.target.value } })} />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1.5">Menu Items (JSON)</label>
+                        <p className="text-[10px] text-blue-600 mb-1">Use 'icon' for dynamic icons.</p>
+                        <textarea 
+                            className={`${inputClass} font-mono text-xs h-40 resize-y`} 
+                            defaultValue={JSON.stringify(node.props.items || [], null, 2)}
+                            onBlur={(e) => handleJsonChange(e.target.value, 'items')}
+                            placeholder='[{"id":"edit", "label":"Edit", "icon":"Edit"}]'
+                        />
+                    </div>
+                </div>
+            </section>
+        )}
+
+        {/* Dynamic List Properties */}
+        {node.type === 'list' && (
+             <section>
+                <h3 className={sectionHeaderClass}><List size={14} /> List Configuration</h3>
+                <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                        <input type="checkbox" id="pagination" className="rounded border-gray-300 text-blue-600" checked={!!node.props.pagination} onChange={(e) => onChange({ props: { ...node.props, pagination: e.target.checked } })} />
+                        <label htmlFor="pagination" className="text-sm text-gray-700">Enable Pagination</label>
+                    </div>
+                    {node.props.pagination && (
+                         <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1.5">Items Per Page</label>
+                            <input type="number" className={inputClass} value={node.props.itemsPerPage || 5} onChange={(e) => onChange({ props: { ...node.props, itemsPerPage: parseInt(e.target.value) } })} />
+                        </div>
+                    )}
+                    <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1.5">List Items (JSON)</label>
+                         <p className="text-[10px] text-blue-600 mb-1">Use 'icon' for dynamic icons.</p>
+                        <textarea 
+                            className={`${inputClass} font-mono text-xs h-40 resize-y`} 
+                            defaultValue={JSON.stringify(node.props.items || [], null, 2)}
+                            onBlur={(e) => handleJsonChange(e.target.value, 'items')}
+                            placeholder='[{"id":1, "title":"Item 1", "description":"...", "icon":"File"}]'
+                        />
                     </div>
                 </div>
             </section>

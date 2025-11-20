@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Type, MousePointer2, CreditCard, Layout, Image as ImageIcon, Star, PanelLeft, GripHorizontal, SplitSquareHorizontal, ToggleLeft, CheckSquare, TextCursorInput, ChevronDown, CaseSensitive, Table, FileText, Users, ThumbsUp } from 'lucide-react';
+import { Box, Type, MousePointer2, CreditCard, Layout, Image as ImageIcon, Star, PanelLeft, GripHorizontal, SplitSquareHorizontal, ToggleLeft, CheckSquare, TextCursorInput, ChevronDown, CaseSensitive, Table, FileText, Users, ThumbsUp, List, AppWindow, MoreVertical } from 'lucide-react';
 import { ComponentType } from '../types';
 
 const DraggableItem = ({ type, label, icon: Icon, onDragStart }: { type: string, label: string, icon: any, onDragStart: (e: React.DragEvent, type: string) => void }) => {
@@ -36,6 +36,7 @@ export default function ComponentLibrary() {
           <DraggableItem type="container" label="Container" icon={Box} onDragStart={handleDragStart} />
           <DraggableItem type="card" label="Card" icon={CreditCard} onDragStart={handleDragStart} />
           <DraggableItem type="divider" label="Divider" icon={SplitSquareHorizontal} onDragStart={handleDragStart} />
+          <DraggableItem type="tabs" label="Tabs" icon={AppWindow} onDragStart={handleDragStart} />
         </div>
         
         <div className="mb-6">
@@ -46,6 +47,7 @@ export default function ComponentLibrary() {
           <DraggableItem type="select" label="Dropdown" icon={ChevronDown} onDragStart={handleDragStart} />
           <DraggableItem type="checkbox" label="Checkbox" icon={CheckSquare} onDragStart={handleDragStart} />
           <DraggableItem type="switch" label="Switch" icon={ToggleLeft} onDragStart={handleDragStart} />
+          <DraggableItem type="dropdown" label="Menu Dropdown" icon={MoreVertical} onDragStart={handleDragStart} />
         </div>
 
         <div className="mb-6">
@@ -54,6 +56,7 @@ export default function ComponentLibrary() {
           <DraggableItem type="image" label="Image" icon={ImageIcon} onDragStart={handleDragStart} />
           <DraggableItem type="avatarGroup" label="Avatar Group" icon={Users} onDragStart={handleDragStart} />
           <DraggableItem type="icon" label="Icon" icon={Star} onDragStart={handleDragStart} />
+          <DraggableItem type="list" label="Dynamic List" icon={List} onDragStart={handleDragStart} />
           <DraggableItem type="interaction" label="Social Interaction" icon={ThumbsUp} onDragStart={handleDragStart} />
         </div>
 

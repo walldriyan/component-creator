@@ -67,7 +67,7 @@ const generateComponentCode = (node: ComponentNode, indentLevel: number = 0): st
   const indent = '  '.repeat(indentLevel);
   const className = styleToTailwind(node.style, node.type);
   const props = Object.entries(node.props)
-    .filter(([key]) => key !== 'data' && key !== 'customColumns' && key !== 'fields' && key !== 'images' && key !== 'max') // handled separately
+    .filter(([key]) => !['data', 'customColumns', 'fields', 'images', 'max', 'items', 'label', 'pagination', 'itemsPerPage', 'activeTab'].includes(key)) // handled separately
     .map(([key, val]) => `${key}={${typeof val === 'string' ? `"${val}"` : `{${val}}`}}`)
     .join(' ');
 
@@ -123,25 +123,60 @@ const generateComponentCode = (node: ComponentNode, indentLevel: number = 0): st
       return `${indent}<div className="${className}">\n${indent}  <Interaction likes={${node.props.likes}} dislikes={${node.props.dislikes}} views={${node.props.views}} />\n${indent}</div>`;
   }
 
+  if (node.type === 'tabs') {
+      const itemsVar = `tabsItems_${node.id.replace(/-/g, '_')}`;
+      const contentMapVar = `tabsContent_${node.id.replace(/-/g, '_')}`;
+      return `${indent}<div className="${className}">\n${indent}  <Tabs items={${itemsVar}} contentMap={${contentMapVar}} defaultActive="${node.props.activeTab}" />\n${indent}</div>`;
+  }
+
+  if (node.type === 'list') {
+      const itemsVar = `listItems_${node.id.replace(/-/g, '_')}`;
+      return `${indent}<div className="${className}">\n${indent}  <PaginatedList items={${itemsVar}} itemsPerPage={${node.props.itemsPerPage || 5}} pagination={${node.props.pagination}} />\n${indent}</div>`;
+  }
+
+  if (node.type === 'dropdown') {
+      const itemsVar = `dropdownItems_${node.id.replace(/-/g, '_')}`;
+      return `${indent}<div className="${className}">\n${indent}  <DropdownMenu label="${node.props.label}" items={${itemsVar}} />\n${indent}</div>`;
+  }
+
   return `${indent}<div className="${className}">Unknown Component</div>`;
 };
 
 export const generateFullCode = (root: ComponentNode): string => {
-  const imports = new Set(['React', 'useState', 'useCallback']);
+  const imports = new Set(['React', 'useState', 'useCallback', 'useMemo']);
   const icons = new Set<string>();
   
   let hasTable = false;
   let hasForm = false;
   let hasAvatar = false;
   let hasInteraction = false;
+  let hasTabs = false;
+  let hasList = false;
+  let hasDropdown = false;
 
   // Recursive scanner
   const scan = (node: ComponentNode) => {
       if (node.type === 'icon' && node.iconName) icons.add(node.iconName);
-      if (node.type === 'table') { hasTable = true; imports.add('Table'); icons.add('Search'); icons.add('ChevronLeft'); icons.add('ChevronRight'); icons.add('Star'); }
+      if (node.type === 'table') { hasTable = true; icons.add('Search'); icons.add('ChevronLeft'); icons.add('ChevronRight'); icons.add('Star'); }
       if (node.type === 'form') { hasForm = true; imports.add('useForm'); imports.add('z'); imports.add('zodResolver'); icons.add('ChevronDown'); }
       if (node.type === 'avatarGroup') { hasAvatar = true; }
       if (node.type === 'interaction') { hasInteraction = true; icons.add('ThumbsUp'); icons.add('ThumbsDown'); icons.add('Eye'); }
+      
+      if (node.type === 'tabs') { 
+          hasTabs = true; 
+          if (node.props.items) node.props.items.forEach((i: any) => i.icon && icons.add(i.icon));
+      }
+      if (node.type === 'list') { 
+          hasList = true; 
+          icons.add('ChevronLeft'); icons.add('ChevronRight');
+          if (node.props.items) node.props.items.forEach((i: any) => i.icon && icons.add(i.icon));
+      }
+      if (node.type === 'dropdown') { 
+          hasDropdown = true; 
+          icons.add('ChevronDown');
+          if (node.props.items) node.props.items.forEach((i: any) => i.icon && icons.add(i.icon));
+      }
+
       // Scan for icon buttons in table columns
       if (node.type === 'table' && node.props.customColumns) {
           node.props.customColumns.forEach((col: any) => {
@@ -152,16 +187,22 @@ export const generateFullCode = (root: ComponentNode): string => {
   };
   scan(root);
 
-  let code = `import React, { useState, useCallback } from 'react';\n`;
+  let code = `import React, { useState, useCallback, useMemo } from 'react';\n`;
+  // Import all used icons from Lucide
   if (icons.size > 0) code += `import { ${Array.from(icons).join(', ')} } from 'lucide-react';\n`;
   if (hasForm) code += `import { useForm } from 'react-hook-form';\nimport { zodResolver } from '@hookform/resolvers/zod';\nimport * as z from 'zod';\n`;
   
-  code += `\n`;
+  code += `\n// Helper to render dynamic icons
+const DynamicIcon = ({ name, size = 16, className }) => {
+  const IconMap = { ${Array.from(icons).map(i => `${i}`).join(', ')} };
+  const Icon = IconMap[name];
+  return Icon ? <Icon size={size} className={className} /> : null;
+};\n\n`;
 
   // Generate Definitions for Reusable Components
   if (hasAvatar) {
       code += `
-const AvatarGroup = ({ images, max }) => {
+const AvatarGroup = React.memo(({ images, max }) => {
   const displayed = images.slice(0, max);
   const remaining = Math.max(0, images.length - max);
   return (
@@ -174,12 +215,12 @@ const AvatarGroup = ({ images, max }) => {
       )}
     </div>
   );
-};\n\n`;
+});\n\n`;
   }
 
   if (hasInteraction) {
       code += `
-const Interaction = ({ likes: initialLikes, dislikes: initialDislikes, views }) => {
+const Interaction = React.memo(({ likes: initialLikes, dislikes: initialDislikes, views }) => {
   const [likes, setLikes] = useState(initialLikes);
   const [dislikes, setDislikes] = useState(initialDislikes);
   const [userAction, setUserAction] = useState(null);
@@ -193,7 +234,7 @@ const Interaction = ({ likes: initialLikes, dislikes: initialDislikes, views }) 
         if (userAction === 'disliked') setDislikes(prev => prev - 1);
         setUserAction('liked');
     }
-    console.log('Action: Like');
+    console.log('Action: Like Clicked');
   }, [userAction]);
 
   const handleDislike = useCallback(() => {
@@ -205,7 +246,7 @@ const Interaction = ({ likes: initialLikes, dislikes: initialDislikes, views }) 
         if (userAction === 'liked') setLikes(prev => prev - 1);
         setUserAction('disliked');
     }
-    console.log('Action: Dislike');
+    console.log('Action: Dislike Clicked');
   }, [userAction]);
 
   return (
@@ -224,10 +265,123 @@ const Interaction = ({ likes: initialLikes, dislikes: initialDislikes, views }) 
        </div>
     </div>
   );
-};\n\n`;
+});\n\n`;
   }
 
-  // Table Code (Simplified for brevity as it was added before)
+  if (hasTabs) {
+      code += `
+// Dynamic Tabs Component with Content Mapping
+const Tabs = React.memo(({ items, defaultActive, contentMap }) => {
+  const [activeTab, setActiveTab] = useState(defaultActive || items[0]?.id);
+  
+  const handleTabClick = useCallback((id) => {
+      setActiveTab(id);
+      console.log('Tab Changed:', id);
+  }, []);
+
+  return (
+    <div className="w-full">
+      <div className="flex border-b border-slate-200">
+        {items.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => handleTabClick(item.id)}
+            className={\`px-4 py-2 text-sm font-medium flex items-center gap-2 border-b-2 transition-colors \${activeTab === item.id ? "border-slate-900 text-slate-900" : "border-transparent text-slate-500 hover:text-slate-700"}\`}
+          >
+            {item.icon && <DynamicIcon name={item.icon} />}
+            {item.label}
+          </button>
+        ))}
+      </div>
+      <div className="p-4 bg-white rounded-b-lg border border-t-0 border-slate-100">
+         {/* Render Dynamic Component based on Map or Fallback */}
+         {contentMap && contentMap[activeTab] ? contentMap[activeTab] : <div className="text-gray-400 text-sm">No content mapped for this tab.</div>}
+      </div>
+    </div>
+  );
+});\n\n`;
+  }
+
+  if (hasList) {
+      code += `
+const PaginatedList = React.memo(({ items, itemsPerPage, pagination }) => {
+  const [page, setPage] = useState(1);
+  
+  const displayItems = useMemo(() => {
+     return pagination ? items.slice((page - 1) * itemsPerPage, page * itemsPerPage) : items;
+  }, [items, page, itemsPerPage, pagination]);
+
+  const totalPages = Math.ceil(items.length / itemsPerPage);
+
+  const handleItemClick = useCallback((item) => {
+      console.log('List Item Clicked:', item);
+  }, []);
+
+  return (
+    <div className="w-full flex flex-col gap-2">
+        {displayItems.map((item) => (
+            <div 
+                key={item.id} 
+                onClick={() => handleItemClick(item)}
+                className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 bg-white hover:border-blue-200 hover:shadow-sm transition-all cursor-pointer group"
+            >
+                {item.icon && <div className="p-2 bg-slate-100 text-slate-600 rounded-md group-hover:bg-blue-50 group-hover:text-blue-600"><DynamicIcon name={item.icon} size={18} /></div>}
+                <div className="flex-1">
+                    <h4 className="text-sm font-medium text-slate-900">{item.title}</h4>
+                    {item.description && <p className="text-xs text-slate-500">{item.description}</p>}
+                </div>
+                <DynamicIcon name="ChevronRight" className="text-slate-300 group-hover:text-slate-400" />
+            </div>
+        ))}
+        {pagination && totalPages > 1 && (
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
+                <button disabled={page === 1} onClick={() => setPage(p => p - 1)} className="p-1 rounded hover:bg-slate-100 disabled:opacity-30"><DynamicIcon name="ChevronLeft" /></button>
+                <span className="text-xs text-slate-400">Page {page} of {totalPages}</span>
+                <button disabled={page === totalPages} onClick={() => setPage(p => p + 1)} className="p-1 rounded hover:bg-slate-100 disabled:opacity-30"><DynamicIcon name="ChevronRight" /></button>
+            </div>
+        )}
+    </div>
+  );
+});\n\n`;
+  }
+
+  if (hasDropdown) {
+      code += `
+const DropdownMenu = React.memo(({ label, items }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  const toggle = useCallback(() => setIsOpen(p => !p), []);
+  const handleSelect = useCallback((id) => {
+      console.log('Dropdown Selected:', id);
+      setIsOpen(false);
+  }, []);
+
+  return (
+    <div className="relative inline-block">
+        <button onClick={toggle} className="flex items-center gap-2 px-3 py-2 text-sm font-medium bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors shadow-sm">
+            {label}
+            <DynamicIcon name="ChevronDown" className={\`transition-transform \${isOpen ? 'rotate-180' : ''}\`} />
+        </button>
+        {isOpen && (
+            <div className="absolute top-full mt-1 right-0 w-48 bg-white rounded-md shadow-lg border border-slate-100 py-1 z-50">
+                {items.map((item) => (
+                    <button 
+                        key={item.id}
+                        onClick={() => handleSelect(item.id)}
+                        className={\`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-slate-50 \${item.danger ? 'text-red-600 hover:bg-red-50' : 'text-slate-700'}\`}
+                    >
+                        {item.icon && <DynamicIcon name={item.icon} size={14} />}
+                        {item.label}
+                    </button>
+                ))}
+            </div>
+        )}
+    </div>
+  );
+});\n\n`;
+  }
+
+  // Table Code
   if (hasTable) {
       code += `const Table = ({ data, customColumns, actionLabel }) => { \n  /* ... Table Implementation ... */ \n  return <div className="border rounded-lg p-4">Table Component Placeholder</div>;\n};\n\n`;
   }
@@ -240,10 +394,25 @@ const Interaction = ({ likes: initialLikes, dislikes: initialDislikes, views }) 
   // Main Component
   code += `export default function Page() {\n`;
   
-  // Generate data variables for tables
+  // Generate data variables
   const scanForData = (node: ComponentNode) => {
       if (node.type === 'table') {
           code += `  const tableData_${node.id.replace(/-/g, '_')} = ${JSON.stringify(node.props.data, null, 2)};\n`;
+      }
+      if (node.type === 'tabs') {
+          code += `  const tabsItems_${node.id.replace(/-/g, '_')} = ${JSON.stringify(node.props.items, null, 2)};\n`;
+          // Generate the content map for dynamic components
+          code += `  const tabsContent_${node.id.replace(/-/g, '_')} = {\n`;
+          node.props.items?.forEach((item: any) => {
+             code += `    "${item.id}": <div className="p-4 text-slate-600">Dynamic Content for <strong>${item.label}</strong> (Prop Passed Component)</div>,\n`;
+          });
+          code += `  };\n`;
+      }
+      if (node.type === 'list') {
+          code += `  const listItems_${node.id.replace(/-/g, '_')} = ${JSON.stringify(node.props.items, null, 2)};\n`;
+      }
+      if (node.type === 'dropdown') {
+          code += `  const dropdownItems_${node.id.replace(/-/g, '_')} = ${JSON.stringify(node.props.items, null, 2)};\n`;
       }
       if (node.type === 'form') {
           let schemaStr = 'z.object({';

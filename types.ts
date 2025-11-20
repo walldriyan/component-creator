@@ -1,5 +1,5 @@
 
-export type ComponentType = 'container' | 'text' | 'button' | 'input' | 'textarea' | 'checkbox' | 'switch' | 'select' | 'card' | 'image' | 'icon' | 'divider' | 'label' | 'table' | 'form' | 'avatarGroup' | 'interaction';
+export type ComponentType = 'container' | 'text' | 'button' | 'input' | 'textarea' | 'checkbox' | 'switch' | 'select' | 'card' | 'image' | 'icon' | 'divider' | 'label' | 'table' | 'form' | 'avatarGroup' | 'interaction' | 'dropdown' | 'list' | 'tabs';
 
 export type LibraryType = 'radix' | 'shadcn' | 'plain';
 

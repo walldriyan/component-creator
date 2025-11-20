@@ -1,7 +1,7 @@
 
 import React, { MouseEvent, useRef, useState, useLayoutEffect, useEffect, useMemo, useCallback } from 'react';
 import { ComponentNode } from '../types';
-import { Settings, Home, User, Bell, Search, Menu, Star, Heart, Share, ArrowRight, Box, Check, X, Layout, Maximize2, Scaling, Copy, CreditCard, Link as LinkIcon, Image as ImageIcon, Square, Minimize2, MoveHorizontal, MoveVertical, ChevronDown, ArrowUp, ArrowDown, AlignCenter, AlignLeft, ArrowRightFromLine, ArrowDownFromLine, Trash2, Minimize, Maximize, ChevronLeft, ChevronRight, Edit, Eye, MoreHorizontal, Plus, Download, Upload, FileText, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Settings, Home, User, Bell, Search, Menu, Star, Heart, Share, ArrowRight, Box, Check, X, Layout, Maximize2, Scaling, Copy, CreditCard, Link as LinkIcon, Image as ImageIcon, Square, Minimize2, MoveHorizontal, MoveVertical, ChevronDown, ArrowUp, ArrowDown, AlignCenter, AlignLeft, ArrowRightFromLine, ArrowDownFromLine, Trash2, Minimize, Maximize, ChevronLeft, ChevronRight, Edit, Eye, MoreHorizontal, Plus, Download, Upload, FileText, ThumbsUp, ThumbsDown, Lock, File, Bug, Server, PenTool, Trash } from 'lucide-react';
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -12,7 +12,8 @@ function cn(...inputs: ClassValue[]) {
 // Expanded Icon Map for more options
 const IconMap: Record<string, any> = {
   Home, User, Settings, Bell, Search, Menu, Star, Heart, Share, ArrowRight, Box, Check, X, Layout,
-  Edit, Eye, Trash2, MoreHorizontal, Plus, Download, Upload, ChevronRight, ChevronLeft, FileText, ThumbsUp, ThumbsDown
+  Edit, Eye, Trash2, MoreHorizontal, Plus, Download, Upload, ChevronRight, ChevronLeft, FileText, ThumbsUp, ThumbsDown,
+  Lock, File, Bug, Server, PenTool, Trash, Copy
 };
 
 interface CanvasProps {
@@ -358,7 +359,6 @@ const AvatarGroupRenderer = ({ node }: { node: ComponentNode }) => {
 
 // --- Social Interaction Renderer ---
 const InteractionRenderer = ({ node }: { node: ComponentNode }) => {
-    // Local state for simulation in Canvas
     const [likes, setLikes] = useState(node.props.likes || 0);
     const [dislikes, setDislikes] = useState(node.props.dislikes || 0);
     const [liked, setLiked] = useState(node.props.liked || false);
@@ -437,6 +437,141 @@ const InteractionRenderer = ({ node }: { node: ComponentNode }) => {
     );
 };
 
+// --- Tabs Renderer ---
+const TabsRenderer = ({ node }: { node: ComponentNode }) => {
+    const [activeTab, setActiveTab] = useState(node.props.activeTab || node.props.items?.[0]?.id);
+
+    useEffect(() => setActiveTab(node.props.activeTab || node.props.items?.[0]?.id), [node.props.activeTab]);
+
+    const activeItem = node.props.items?.find((i:any) => i.id === activeTab);
+
+    return (
+        <div className="w-full">
+            <div className="flex border-b border-slate-200">
+                {node.props.items?.map((item: any) => {
+                    const Icon = item.icon ? IconMap[item.icon] : null;
+                    return (
+                        <button
+                            key={item.id}
+                            onClick={(e) => { 
+                                e.stopPropagation(); 
+                                setActiveTab(item.id); 
+                                console.log('Tabs Event: Change', item.id);
+                            }}
+                            className={cn(
+                                "px-4 py-2 text-sm font-medium flex items-center gap-2 border-b-2 transition-colors",
+                                activeTab === item.id ? "border-slate-900 text-slate-900" : "border-transparent text-slate-500 hover:text-slate-700"
+                            )}
+                        >
+                            {Icon && <Icon size={16} />}
+                            {item.label}
+                        </button>
+                    );
+                })}
+            </div>
+            <div className="p-4 bg-white rounded-b-lg border border-t-0 border-slate-100 text-sm text-slate-600">
+                {activeItem?.content ? (
+                    <div dangerouslySetInnerHTML={{ __html: activeItem.content }} />
+                ) : (
+                    <div className="text-slate-400 italic">Content for "{activeItem?.label}"</div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+// --- Dynamic List Renderer ---
+const ListRenderer = ({ node }: { node: ComponentNode }) => {
+    const items = node.props.items || [];
+    const itemsPerPage = node.props.itemsPerPage || 5;
+    const hasPagination = node.props.pagination;
+    const [page, setPage] = useState(1);
+
+    useEffect(() => setPage(1), [items.length]);
+
+    const displayItems = hasPagination ? items.slice((page - 1) * itemsPerPage, page * itemsPerPage) : items;
+    const totalPages = Math.ceil(items.length / itemsPerPage);
+
+    return (
+        <div className="w-full flex flex-col gap-2">
+            {displayItems.map((item: any) => {
+                const Icon = item.icon ? IconMap[item.icon] : null;
+                return (
+                    <div 
+                        key={item.id} 
+                        className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 bg-white hover:border-blue-200 hover:shadow-sm transition-all cursor-pointer group"
+                        onClick={(e) => { e.stopPropagation(); console.log('List Event: Item Click', item); }}
+                    >
+                        {Icon && <div className="p-2 bg-slate-100 text-slate-600 rounded-md group-hover:bg-blue-50 group-hover:text-blue-600"><Icon size={18} /></div>}
+                        <div className="flex-1">
+                            <h4 className="text-sm font-medium text-slate-900">{item.title}</h4>
+                            {item.description && <p className="text-xs text-slate-500">{item.description}</p>}
+                        </div>
+                        <ChevronRight size={16} className="text-slate-300 group-hover:text-slate-400" />
+                    </div>
+                );
+            })}
+            {hasPagination && totalPages > 1 && (
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
+                    <button 
+                        disabled={page === 1} 
+                        onClick={(e) => { e.stopPropagation(); setPage(p => p - 1); console.log('List Event: Page Change', page - 1); }}
+                        className="p-1 rounded hover:bg-slate-100 disabled:opacity-30"
+                    >
+                        <ChevronLeft size={16} />
+                    </button>
+                    <span className="text-xs text-slate-400">Page {page} of {totalPages}</span>
+                    <button 
+                         disabled={page === totalPages} 
+                         onClick={(e) => { e.stopPropagation(); setPage(p => p + 1); console.log('List Event: Page Change', page + 1); }}
+                         className="p-1 rounded hover:bg-slate-100 disabled:opacity-30"
+                    >
+                        <ChevronRight size={16} />
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// --- Dropdown Renderer ---
+const DropdownRenderer = ({ node }: { node: ComponentNode }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    
+    return (
+        <div className="relative inline-block">
+            <button 
+                onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
+                className="flex items-center gap-2 px-3 py-2 text-sm font-medium bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors shadow-sm"
+            >
+                {node.props.label || 'Menu'}
+                <ChevronDown size={16} className={cn("transition-transform", isOpen && "rotate-180")} />
+            </button>
+            
+            {isOpen && (
+                <div className="absolute top-full mt-1 right-0 w-48 bg-white rounded-md shadow-lg border border-slate-100 py-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+                    {node.props.items?.map((item: any) => {
+                         const Icon = item.icon ? IconMap[item.icon] : null;
+                         return (
+                            <button 
+                                key={item.id}
+                                onClick={(e) => { e.stopPropagation(); setIsOpen(false); console.log('Dropdown Event: Select', item.id); }}
+                                className={cn(
+                                    "w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-slate-50",
+                                    item.danger ? "text-red-600 hover:bg-red-50" : "text-slate-700"
+                                )}
+                            >
+                                {Icon && <Icon size={14} />}
+                                {item.label}
+                            </button>
+                         );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+};
+
 const CanvasRenderer: React.FC<CanvasProps> = React.memo(({ node, selectedId, onSelect, onDrop, onDelete, onResize, onUpdate, onDuplicate, onWrap, index = 0, parentId = null }) => {
   const isSelected = selectedId === node.id;
   const elementRef = useRef<HTMLDivElement>(null);
@@ -505,7 +640,7 @@ const CanvasRenderer: React.FC<CanvasProps> = React.memo(({ node, selectedId, on
     const height = rect.height;
     const relativeY = e.clientY - rect.top;
     
-    const isLeaf = ['text', 'image', 'input', 'icon', 'switch', 'checkbox', 'divider', 'textarea', 'select', 'table', 'form', 'avatarGroup', 'interaction'].includes(node.type);
+    const isLeaf = ['text', 'image', 'input', 'icon', 'switch', 'checkbox', 'divider', 'textarea', 'select', 'table', 'form', 'avatarGroup', 'interaction', 'tabs', 'list', 'dropdown'].includes(node.type);
     const canAcceptChildren = !isLeaf;
     
     let newPosition: 'top' | 'bottom' | 'inside' | null = null;
@@ -611,6 +746,9 @@ const CanvasRenderer: React.FC<CanvasProps> = React.memo(({ node, selectedId, on
       if (node.type === 'form') return <FormRenderer node={node} />;
       if (node.type === 'avatarGroup') return <AvatarGroupRenderer node={node} />;
       if (node.type === 'interaction') return <InteractionRenderer node={node} />;
+      if (node.type === 'tabs') return <TabsRenderer node={node} />;
+      if (node.type === 'list') return <ListRenderer node={node} />;
+      if (node.type === 'dropdown') return <DropdownRenderer node={node} />;
 
       return null;
   };

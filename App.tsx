@@ -278,6 +278,43 @@ export default function App() {
               liked: false,
               disliked: false
           };
+      } else if (type === 'tabs') {
+          base.name = 'Tabs';
+          base.style = { ...base.style, width: '100%', height: 'auto', flexDirection: 'column' };
+          base.props = {
+              items: [
+                  { id: 'account', label: 'Account', icon: 'User', content: '<p>Manage your account settings here.</p>' },
+                  { id: 'security', label: 'Security', icon: 'Lock', content: '<p>Security preferences and 2FA.</p>' },
+                  { id: 'notifications', label: 'Notifications', icon: 'Bell', content: '<p>Email and push notification settings.</p>' }
+              ],
+              activeTab: 'account'
+          };
+      } else if (type === 'list') {
+          base.name = 'Dynamic List';
+          base.style = { ...base.style, width: '100%', flexDirection: 'column', backgroundColor: '#ffffff', borderWidth: '1px', borderRadius: '8px', padding: '16px' };
+          base.props = {
+              itemsPerPage: 5,
+              pagination: true,
+              items: [
+                  { id: 1, title: 'Project A Update', description: 'Daily standup notes', icon: 'FileText' },
+                  { id: 2, title: 'Client Meeting', description: 'Discuss requirements', icon: 'Users' },
+                  { id: 3, title: 'Code Review', description: 'PR #123 needs review', icon: 'Code' },
+                  { id: 4, title: 'Deployment', description: 'Deploy to production', icon: 'Server' },
+                  { id: 5, title: 'Bug Fix', description: 'Fix login issue', icon: 'Bug' },
+                  { id: 6, title: 'Design Sync', description: 'Sync with UI team', icon: 'PenTool' },
+              ]
+          };
+      } else if (type === 'dropdown') {
+          base.name = 'Dropdown Menu';
+          base.style = { ...base.style, width: 'auto', position: 'relative' };
+          base.props = {
+              label: 'Options',
+              items: [
+                  { id: 'edit', label: 'Edit', icon: 'Edit' },
+                  { id: 'duplicate', label: 'Duplicate', icon: 'Copy' },
+                  { id: 'delete', label: 'Delete', icon: 'Trash', danger: true }
+              ]
+          };
       }
 
       // Templates with full children structure
