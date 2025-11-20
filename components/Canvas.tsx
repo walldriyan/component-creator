@@ -17,10 +17,12 @@ interface CanvasProps {
   node: ComponentNode;
   selectedId: string | null;
   onSelect: (id: string) => void;
-  onDrop: (e: React.DragEvent, targetId: string) => void;
+  onDrop: (e: React.DragEvent, targetId: string, index?: number) => void; // Updated to accept index
   onDelete: (id: string) => void;
   onResize: (id: string, style: any) => void;
-  onUpdate?: (id: string, updates: Partial<ComponentNode> | any) => void; // Added onUpdate prop
+  onUpdate?: (id: string, updates: Partial<ComponentNode> | any) => void;
+  index?: number; // Pass current index from parent
+  parentId?: string | null;
 }
 
 const getComponentClasses = (node: ComponentNode, isSelected: boolean) => {
@@ -80,17 +82,18 @@ const getComponentClasses = (node: ComponentNode, isSelected: boolean) => {
   return cn(base, selection, libStyles, dynamicStyles);
 };
 
-const CanvasRenderer: React.FC<CanvasProps> = ({ node, selectedId, onSelect, onDrop, onDelete, onResize, onUpdate }) => {
+const CanvasRenderer: React.FC<CanvasProps> = ({ node, selectedId, onSelect, onDrop, onDelete, onResize, onUpdate, index = 0, parentId = null }) => {
   const isSelected = selectedId === node.id;
   const elementRef = useRef<HTMLDivElement>(null);
-  const [isDragOver, setIsDragOver] = useState(false);
+  
+  // Drag Over State: 'top' | 'bottom' | 'inside' | null
+  const [dragPosition, setDragPosition] = useState<'top' | 'bottom' | 'inside' | null>(null);
 
   const handleDragStart = (e: React.DragEvent) => {
       e.stopPropagation();
       e.dataTransfer.setData('nodeId', node.id);
       e.dataTransfer.effectAllowed = "move";
 
-      // Create a custom drag image
       const dragIcon = document.createElement('div');
       dragIcon.innerHTML = `
         <div style="background: #3b82f6; color: white; padding: 8px 12px; border-radius: 6px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); font-family: sans-serif; font-size: 12px;">
@@ -108,23 +111,71 @@ const CanvasRenderer: React.FC<CanvasProps> = ({ node, selectedId, onSelect, onD
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (node.type === 'container' || node.type === 'card' || node.type === 'button') {
-        setIsDragOver(true);
-        e.dataTransfer.dropEffect = "move";
+    
+    if (!elementRef.current) return;
+
+    const rect = elementRef.current.getBoundingClientRect();
+    const clientY = e.clientY;
+    const clientX = e.clientX;
+    
+    // Check if node is a container that accepts children "inside"
+    const isContainer = node.type === 'container' || node.type === 'card' || (node.type === 'button' && node.children.length > 0);
+    
+    // Logic to decide if we drop Inside, Above or Below
+    // If we are strictly hovering the edges, we might drop inside if it's empty
+    
+    // Simple vertical sort logic
+    const height = rect.height;
+    const relativeY = clientY - rect.top;
+    
+    // If it's a container and we are in the middle zone, drop inside (append)
+    if (isContainer && relativeY > 10 && relativeY < height - 10) {
+        // But wait, if it has children, the children's dragOver will capture it. 
+        // So this only triggers if we are in the container's padding area.
+        setDragPosition('inside');
+        return;
+    }
+
+    // Otherwise, decide Top or Bottom relative to THIS element in the parent's list
+    if (relativeY < height / 2) {
+        setDragPosition('top');
+    } else {
+        setDragPosition('bottom');
     }
   };
   
   const handleDragLeave = (e: React.DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      setIsDragOver(false);
+      setDragPosition(null);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragOver(false);
-    onDrop(e, node.id);
+    
+    const draggedNodeId = e.dataTransfer.getData('nodeId');
+    if (draggedNodeId === node.id) {
+        setDragPosition(null);
+        return;
+    }
+
+    if (dragPosition === 'inside') {
+        // Drop inside this node (append to end)
+        onDrop(e, node.id); 
+    } else if (dragPosition === 'top') {
+        // Drop into PARENT, at this node's index
+        if (parentId) {
+             onDrop(e, parentId, index);
+        }
+    } else if (dragPosition === 'bottom') {
+        // Drop into PARENT, at this node's index + 1
+        if (parentId) {
+             onDrop(e, parentId, index + 1);
+        }
+    }
+    
+    setDragPosition(null);
   };
 
   const handleClick = (e: MouseEvent) => {
@@ -162,45 +213,12 @@ const CanvasRenderer: React.FC<CanvasProps> = ({ node, selectedId, onSelect, onD
   };
 
   // --- Popup Toolbar Handlers ---
-  const toggleWidth = (e: MouseEvent) => {
-      e.stopPropagation();
-      const newW = node.style.width === '100%' ? 'auto' : '100%';
-      if(onUpdate) onUpdate(node.id, { style: { ...node.style, width: newW }});
-  }
-  
-  const toggleHeight = (e: MouseEvent) => {
-      e.stopPropagation();
-      const newH = node.style.height === '100%' ? 'auto' : '100%';
-      if(onUpdate) onUpdate(node.id, { style: { ...node.style, height: newH }});
-  }
-
-  const toggleGrow = (e: MouseEvent) => {
-      e.stopPropagation();
-      const newG = node.style.flexGrow === 1 ? 0 : 1;
-      if(onUpdate) onUpdate(node.id, { style: { ...node.style, flexGrow: newG }});
-  }
-
-  const toggleBorder = (e: MouseEvent) => {
-      e.stopPropagation();
-      const hasBorder = node.style.borderWidth && node.style.borderWidth !== '0px';
-      if(onUpdate) onUpdate(node.id, { style: { ...node.style, borderWidth: hasBorder ? '0px' : '1px' }});
-  }
-
-  const addLink = (e: MouseEvent) => {
-      e.stopPropagation();
-      const url = prompt("Enter URL (e.g., /dashboard or https://google.com):", node.href || "");
-      if (url !== null && onUpdate) {
-          onUpdate(node.id, { href: url });
-      }
-  }
-
-  const changeImage = (e: MouseEvent) => {
-      e.stopPropagation();
-      const url = prompt("Enter Image URL:", node.content || "");
-      if (url !== null && onUpdate) {
-          onUpdate(node.id, { content: url });
-      }
-  }
+  const toggleWidth = (e: MouseEvent) => { e.stopPropagation(); if(onUpdate) onUpdate(node.id, { style: { ...node.style, width: node.style.width === '100%' ? 'auto' : '100%' }}); }
+  const toggleHeight = (e: MouseEvent) => { e.stopPropagation(); if(onUpdate) onUpdate(node.id, { style: { ...node.style, height: node.style.height === '100%' ? 'auto' : '100%' }}); }
+  const toggleGrow = (e: MouseEvent) => { e.stopPropagation(); if(onUpdate) onUpdate(node.id, { style: { ...node.style, flexGrow: node.style.flexGrow === 1 ? 0 : 1 }}); }
+  const toggleBorder = (e: MouseEvent) => { e.stopPropagation(); if(onUpdate) onUpdate(node.id, { style: { ...node.style, borderWidth: (node.style.borderWidth && node.style.borderWidth !== '0px') ? '0px' : '1px' }}); }
+  const addLink = (e: MouseEvent) => { e.stopPropagation(); const url = prompt("Enter URL:", node.href || ""); if (url !== null && onUpdate) onUpdate(node.id, { href: url }); }
+  const changeImage = (e: MouseEvent) => { e.stopPropagation(); const url = prompt("Enter Image URL:", node.content || ""); if (url !== null && onUpdate) onUpdate(node.id, { content: url }); }
 
   const classes = getComponentClasses(node, isSelected);
 
@@ -211,35 +229,17 @@ const CanvasRenderer: React.FC<CanvasProps> = ({ node, selectedId, onSelect, onD
       return (
           <div className="absolute left-0 -top-12 h-10 bg-slate-800 text-white rounded-md shadow-xl flex items-center px-2 gap-1 z-[100] animate-in fade-in slide-in-from-bottom-2">
               <div className="flex items-center gap-1 pr-2 border-r border-slate-600">
-                <button onClick={toggleWidth} title="Toggle Width (Auto/Full)" className={cn("p-1.5 rounded hover:bg-slate-700 transition-colors", node.style.width === '100%' && "bg-blue-600 text-white")}>
-                    <Maximize2 size={14} className="rotate-90" />
-                </button>
-                <button onClick={toggleHeight} title="Toggle Height (Auto/Full)" className={cn("p-1.5 rounded hover:bg-slate-700 transition-colors", node.style.height === '100%' && "bg-blue-600 text-white")}>
-                    <Maximize2 size={14} />
-                </button>
-                <button onClick={toggleGrow} title="Toggle Flex Grow" className={cn("p-1.5 rounded hover:bg-slate-700 transition-colors", node.style.flexGrow === 1 && "bg-blue-600 text-white")}>
-                    <Scaling size={14} />
-                </button>
+                <button onClick={toggleWidth} title="Toggle Width" className={cn("p-1.5 rounded hover:bg-slate-700", node.style.width === '100%' && "bg-blue-600")}><Maximize2 size={14} className="rotate-90" /></button>
+                <button onClick={toggleHeight} title="Toggle Height" className={cn("p-1.5 rounded hover:bg-slate-700", node.style.height === '100%' && "bg-blue-600")}><Maximize2 size={14} /></button>
+                <button onClick={toggleGrow} title="Toggle Flex Grow" className={cn("p-1.5 rounded hover:bg-slate-700", node.style.flexGrow === 1 && "bg-blue-600")}><Scaling size={14} /></button>
               </div>
-              
               <div className="flex items-center gap-1 px-1">
-                 <button onClick={toggleBorder} title="Toggle Border" className={cn("p-1.5 rounded hover:bg-slate-700 transition-colors", node.style.borderWidth === '1px' && "bg-blue-600 text-white")}>
-                    <Square size={14} />
-                 </button>
-                 <button onClick={addLink} title="Add Link (Next.js)" className={cn("p-1.5 rounded hover:bg-slate-700 transition-colors", node.href && "text-green-400")}>
-                    <LinkIcon size={14} />
-                 </button>
-                 {node.type === 'image' && (
-                    <button onClick={changeImage} title="Change Image" className="p-1.5 rounded hover:bg-slate-700 transition-colors">
-                        <ImageIcon size={14} />
-                    </button>
-                 )}
+                 <button onClick={toggleBorder} title="Toggle Border" className={cn("p-1.5 rounded hover:bg-slate-700", node.style.borderWidth === '1px' && "bg-blue-600")}><Square size={14} /></button>
+                 <button onClick={addLink} title="Link" className={cn("p-1.5 rounded hover:bg-slate-700", node.href && "text-green-400")}><LinkIcon size={14} /></button>
+                 {node.type === 'image' && <button onClick={changeImage} className="p-1.5 rounded hover:bg-slate-700"><ImageIcon size={14} /></button>}
               </div>
-
                <div className="flex items-center pl-2 border-l border-slate-600 ml-1">
-                  <button onClick={handleDelete} className="p-1.5 rounded hover:bg-red-600 text-red-400 hover:text-white transition-colors">
-                      <Trash2 size={14} />
-                  </button>
+                  <button onClick={handleDelete} className="p-1.5 rounded hover:bg-red-600 text-red-400 hover:text-white"><Trash2 size={14} /></button>
                </div>
           </div>
       );
@@ -256,35 +256,41 @@ const CanvasRenderer: React.FC<CanvasProps> = ({ node, selectedId, onSelect, onD
       );
   };
 
+  // Render Drop Indicators (Blue Lines)
+  const renderDropIndicator = () => {
+      if (!dragPosition) return null;
+      
+      if (dragPosition === 'inside') {
+          return <div className="absolute inset-0 border-2 border-blue-500 bg-blue-50/20 rounded-lg pointer-events-none z-50 animate-pulse" />
+      }
+      if (dragPosition === 'top') {
+          return <div className="absolute -top-1 left-0 right-0 h-1 bg-blue-500 rounded pointer-events-none z-50 shadow-sm" />
+      }
+      if (dragPosition === 'bottom') {
+          return <div className="absolute -bottom-1 left-0 right-0 h-1 bg-blue-500 rounded pointer-events-none z-50 shadow-sm" />
+      }
+      return null;
+  }
+
   const structuralStyles = { 
-      width: node.style.width,
-      height: node.style.height,
-      borderWidth: node.style.borderWidth,
-      borderColor: node.style.borderColor,
-      borderStyle: node.style.borderStyle as any,
-      borderRight: node.style.borderRight,
-      borderBottom: node.style.borderBottom,
-      marginBottom: node.style.marginBottom,
-      gap: node.style.gap, 
-      display: (node.style.flexDirection || node.style.gap || node.type === 'container' || node.type === 'button') ? 'flex' : undefined,
-      flexDirection: node.style.flexDirection as any,
-      justifyContent: node.style.justifyContent,
-      alignItems: node.style.alignItems,
-      flexGrow: node.style.flexGrow,
-      padding: node.style.padding 
+      width: node.style.width, height: node.style.height,
+      borderWidth: node.style.borderWidth, borderColor: node.style.borderColor, borderStyle: node.style.borderStyle as any,
+      borderRight: node.style.borderRight, borderBottom: node.style.borderBottom, marginBottom: node.style.marginBottom,
+      gap: node.style.gap, display: (node.style.flexDirection || node.style.gap || node.type === 'container' || node.type === 'button') ? 'flex' : undefined,
+      flexDirection: node.style.flexDirection as any, justifyContent: node.style.justifyContent, alignItems: node.style.alignItems,
+      flexGrow: node.style.flexGrow, padding: node.style.padding 
   };
 
   const renderContent = () => {
     if (node.type === 'text') return node.content || 'Text';
     if (node.type === 'button') {
         if (node.children && node.children.length > 0) {
-            return node.children.map(child => (
-                <CanvasRenderer key={child.id} node={child} selectedId={selectedId} onSelect={onSelect} onDrop={onDrop} onDelete={onDelete} onResize={onResize} onUpdate={onUpdate} />
+            return node.children.map((child, idx) => (
+                <CanvasRenderer key={child.id} node={child} selectedId={selectedId} onSelect={onSelect} onDrop={onDrop} onDelete={onDelete} onResize={onResize} onUpdate={onUpdate} index={idx} parentId={node.id} />
             ));
         }
         return node.content || 'Button';
     }
-
     if (node.type === 'input') return null; 
     if (node.type === 'image') return <img src={node.content || "https://picsum.photos/200/200"} className="w-full h-full object-cover rounded" alt="placeholder" draggable={false}/>
     if (node.type === 'icon') {
@@ -292,37 +298,26 @@ const CanvasRenderer: React.FC<CanvasProps> = ({ node, selectedId, onSelect, onD
         return <IconComponent size={20} />;
     }
     
-    return node.children.map(child => (
-      <CanvasRenderer key={child.id} node={child} selectedId={selectedId} onSelect={onSelect} onDrop={onDrop} onDelete={onDelete} onResize={onResize} onUpdate={onUpdate} />
+    return node.children.map((child, idx) => (
+      <CanvasRenderer key={child.id} node={child} selectedId={selectedId} onSelect={onSelect} onDrop={onDrop} onDelete={onDelete} onResize={onResize} onUpdate={onUpdate} index={idx} parentId={node.id} />
     ));
   };
-
-  const containerBorderStyles = (node.type === 'container' || node.type === 'card' || node.type === 'button') && isDragOver 
-      ? { outline: '2px dashed #22c55e', outlineOffset: '-2px', backgroundColor: 'rgba(34, 197, 94, 0.05)' } 
-      : {};
 
   const emptyHelper = (node.type === 'container' && node.children.length === 0 && !node.style.minHeight)
     ? { minHeight: '80px', borderStyle: 'dashed', borderWidth: '2px', borderColor: '#e5e7eb' }
     : {};
+  
+  const linkIndicator = node.href ? ( <div className="absolute top-1 right-1 bg-green-500 text-white p-0.5 rounded-full z-20 pointer-events-none"><LinkIcon size={8} /></div> ) : null;
 
-  // Helper for link indication
-  const linkIndicator = node.href ? (
-      <div className="absolute top-1 right-1 bg-green-500 text-white p-0.5 rounded-full z-20 pointer-events-none">
-          <LinkIcon size={8} />
-      </div>
-  ) : null;
-
+  // Wrapper for non-container elements (Leaf nodes) to handle DragOver logic correctly
   if (node.type === 'input' || node.type === 'icon') {
       return (
-        <div ref={elementRef} className="relative group inline-block" onClick={handleClick} draggable onDragStart={handleDragStart} style={structuralStyles} >
-             {node.type === 'input' ? (
-                 <input type="text" placeholder={node.content || "Input..."} className={classes} readOnly />
-             ) : (
-                 <div className={classes}>{renderContent()}</div>
-             )}
+        <div ref={elementRef} className="relative group inline-block" onClick={handleClick} draggable onDragStart={handleDragStart} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} style={structuralStyles} >
+             {node.type === 'input' ? <input type="text" placeholder={node.content || "Input..."} className={classes} readOnly /> : <div className={classes}>{renderContent()}</div>}
             {linkIndicator}
             {renderHandles()}
             {renderPopupMenu()} 
+            {renderDropIndicator()}
         </div>
       )
   }
@@ -337,11 +332,12 @@ const CanvasRenderer: React.FC<CanvasProps> = ({ node, selectedId, onSelect, onD
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      style={{ ...structuralStyles, ...emptyHelper, ...containerBorderStyles }}
+      style={{ ...structuralStyles, ...emptyHelper }}
     >
       {linkIndicator}
       {renderHandles()}
       {renderPopupMenu()}
+      {renderDropIndicator()}
       {node.id === 'root' && <div className="absolute top-0 left-0 bg-blue-100 text-blue-800 text-[10px] px-2 py-0.5 rounded-br uppercase font-bold tracking-wider opacity-50 pointer-events-none">Canvas</div>}
       {renderContent()}
     </div>
