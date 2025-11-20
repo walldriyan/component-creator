@@ -1,3 +1,4 @@
+
 export type ComponentType = 'container' | 'text' | 'button' | 'input' | 'textarea' | 'checkbox' | 'switch' | 'select' | 'card' | 'image' | 'icon' | 'divider' | 'label';
 
 export type LibraryType = 'radix' | 'shadcn' | 'plain';
@@ -29,6 +30,7 @@ export interface StyleProps {
   fontWeight?: string;
   textAlign?: 'left' | 'center' | 'right';
   boxShadow?: string;
+  cursor?: string;
 }
 
 export interface ComponentNode {

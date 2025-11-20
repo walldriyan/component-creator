@@ -1,3 +1,4 @@
+
 import React, { MouseEvent, useRef, useState, useLayoutEffect, useEffect, useMemo } from 'react';
 import { ComponentNode } from '../types';
 import { Settings, Home, User, Bell, Search, Menu, Star, Heart, Share, ArrowRight, Box, Check, X, Layout, Maximize2, Scaling, Copy, CreditCard, Link as LinkIcon, Image as ImageIcon, Square, Minimize2, MoveHorizontal, MoveVertical, ChevronDown, ArrowUp, ArrowDown } from 'lucide-react';
@@ -83,6 +84,7 @@ const getComponentClasses = (node: ComponentNode, isSelected: boolean) => {
     style.boxShadow ? 'shadow-md' : '',
     style.fontSize ? `text-[${style.fontSize}]` : '',
     style.fontWeight ? `font-[${style.fontWeight}]` : '',
+    style.cursor ? `cursor-${style.cursor}` : '',
   ].filter(Boolean).join(' ');
 
   return cn(base, selection, libStyles, dynamicStyles);

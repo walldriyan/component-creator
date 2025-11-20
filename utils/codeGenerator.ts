@@ -1,3 +1,4 @@
+
 import { ComponentNode, StyleProps } from "../types";
 
 const styleToTailwind = (style: StyleProps, type: string): string => {
@@ -60,6 +61,7 @@ const styleToTailwind = (style: StyleProps, type: string): string => {
   if (style.boxShadow) classes.push('shadow-md');
   if (style.fontSize) classes.push(`text-[${style.fontSize}]`);
   if (style.fontWeight) classes.push(`font-[${style.fontWeight}]`);
+  if (style.cursor) classes.push(`cursor-${style.cursor}`);
 
   return classes.join(' ');
 };

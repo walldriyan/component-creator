@@ -1,8 +1,9 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import ComponentLibrary from './components/ComponentLibrary';
 import CanvasRenderer from './components/Canvas';
 import PropertiesPanel from './components/PropertiesPanel';
-import { ComponentNode, initialCanvas, ComponentType, StyleProps } from './types';
+import { ComponentNode, initialCanvas, ComponentType, LibraryType } from './types';
 import { Code, Sparkles, Download, X, PanelLeftClose, PanelLeftOpen, Undo2, Redo2 } from 'lucide-react';
 import { generateFullCode } from './utils/codeGenerator';
 import { generateLayoutWithGemini } from './services/geminiService';
@@ -206,12 +207,170 @@ export default function App() {
           };
       }
 
-      // Templates
-      if (type === 'sidebar' || type === 'navbar') {
-           const sidebar: ComponentNode = { ...base, type: 'container', name: 'Sidebar', style: { width: '260px', height: '100%', backgroundColor: '#ffffff', borderRight: '1px solid #e2e8f0', padding: '20px', flexDirection: 'column', gap: '10px' }};
-           if(type === 'sidebar') return sidebar;
-           const navbar: ComponentNode = { ...base, type: 'container', name: 'Navbar', style: { width: '100%', height: '64px', backgroundColor: '#ffffff', borderBottom: '1px solid #e2e8f0', padding: '0 20px', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }};
-           if(type === 'navbar') return navbar;
+      // Templates with full children structure
+      if (type === 'sidebar') {
+           const sidebarId = genId();
+           
+           const createMenuItem = (label: string, icon: string): ComponentNode => {
+               const itemId = genId();
+               return {
+                   id: itemId,
+                   type: 'container',
+                   name: 'Menu Item',
+                   library: 'shadcn',
+                   props: {},
+                   style: { 
+                       width: '100%', 
+                       padding: '10px', 
+                       borderRadius: '6px', 
+                       flexDirection: 'row', 
+                       alignItems: 'center', 
+                       gap: '12px', 
+                       backgroundColor: 'transparent', 
+                       color: '#64748b',
+                       cursor: 'pointer'
+                   },
+                   children: [
+                       { id: genId(), type: 'icon', name: 'Icon', library: 'shadcn', props: {}, style: {}, iconName: icon, children: [], parentId: itemId },
+                       { id: genId(), type: 'text', name: 'Label', library: 'shadcn', props: {}, style: { fontSize: '14px', fontWeight: '500' }, content: label, children: [], parentId: itemId }
+                   ],
+                   parentId: sidebarId
+               };
+           };
+
+           const sidebar: ComponentNode = { 
+               ...base, 
+               id: sidebarId,
+               type: 'container', 
+               name: 'Sidebar', 
+               style: { 
+                   width: '260px', 
+                   height: '100%', 
+                   backgroundColor: '#ffffff', 
+                   borderRight: '1px solid #e2e8f0', 
+                   padding: '24px', 
+                   flexDirection: 'column', 
+                   gap: '8px' 
+               },
+               children: [
+                   {
+                       id: genId(),
+                       type: 'text',
+                       name: 'Brand',
+                       library: 'shadcn',
+                       props: {},
+                       style: { fontSize: '20px', fontWeight: 'bold', marginBottom: '24px', color: '#0f172a' },
+                       content: 'Dashboard',
+                       children: [],
+                       parentId: sidebarId
+                   },
+                   createMenuItem('Home', 'Home'),
+                   createMenuItem('Profile', 'User'),
+                   createMenuItem('Settings', 'Settings'),
+                   {
+                        id: genId(),
+                        type: 'container',
+                        name: 'Spacer',
+                        library: 'shadcn',
+                        props: {},
+                        style: { flexGrow: 1 },
+                        children: [],
+                        parentId: sidebarId
+                   },
+                   {
+                       id: genId(),
+                       type: 'divider',
+                       name: 'Divider',
+                       library: 'shadcn',
+                       props: {},
+                       style: { width: '100%', height: '1px', backgroundColor: '#e2e8f0', margin: '10px 0' },
+                       children: [],
+                       parentId: sidebarId
+                   },
+                   {
+                       ...createMenuItem('Log Out', 'ArrowRight'),
+                   }
+               ]
+           };
+           
+           // Fix parentId for generated children recursively
+           const setParentIds = (node: ComponentNode, pid: string | null) => {
+               node.parentId = pid;
+               node.children.forEach(c => setParentIds(c, node.id));
+           };
+           setParentIds(sidebar, parentId);
+
+           return sidebar;
+      }
+
+      if (type === 'navbar') {
+           const navbarId = genId();
+           const navbar: ComponentNode = { 
+               ...base, 
+               id: navbarId,
+               type: 'container', 
+               name: 'Navbar', 
+               style: { 
+                   width: '100%', 
+                   height: '64px', 
+                   backgroundColor: '#ffffff', 
+                   borderBottom: '1px solid #e2e8f0', 
+                   padding: '0 24px', 
+                   flexDirection: 'row', 
+                   alignItems: 'center', 
+                   justifyContent: 'space-between' 
+               },
+               children: [
+                   // Logo Section
+                   {
+                       id: genId(),
+                       type: 'container',
+                       name: 'Logo Group',
+                       library: 'shadcn',
+                       props: {},
+                       style: { flexDirection: 'row', alignItems: 'center', gap: '10px' },
+                       children: [
+                            { id: genId(), type: 'icon', name: 'Logo Icon', library: 'shadcn', props: {}, style: { color: '#2563eb' }, iconName: 'Box', children: [], parentId: '' },
+                            { id: genId(), type: 'text', name: 'Brand', library: 'shadcn', props: {}, style: { fontSize: '18px', fontWeight: 'bold', color: '#0f172a' }, content: 'Brand', children: [], parentId: '' }
+                       ],
+                       parentId: navbarId
+                   },
+                   // Nav Links
+                   {
+                       id: genId(),
+                       type: 'container',
+                       name: 'Links Group',
+                       library: 'shadcn',
+                       props: {},
+                       style: { flexDirection: 'row', alignItems: 'center', gap: '24px' },
+                       children: [
+                           { id: genId(), type: 'text', name: 'Link', library: 'shadcn', props: {}, style: { fontSize: '14px', fontWeight: '500', color: '#64748b', cursor: 'pointer' }, content: 'Overview', children: [], parentId: '' },
+                           { id: genId(), type: 'text', name: 'Link', library: 'shadcn', props: {}, style: { fontSize: '14px', fontWeight: '500', color: '#64748b', cursor: 'pointer' }, content: 'Customers', children: [], parentId: '' },
+                           { 
+                               id: genId(), 
+                               type: 'button', 
+                               name: 'Action', 
+                               library: 'shadcn', 
+                               props: { variant: 'default' }, 
+                               style: { height: '36px', borderRadius: '6px' }, 
+                               content: 'Log In', 
+                               children: [], 
+                               parentId: '' 
+                           }
+                       ],
+                       parentId: navbarId
+                   }
+               ]
+           };
+           
+           // Fix parentId for generated children recursively
+           const setParentIds = (node: ComponentNode, pid: string | null) => {
+               node.parentId = pid;
+               node.children.forEach(c => setParentIds(c, node.id));
+           };
+           setParentIds(navbar, parentId);
+           
+           return navbar;
       }
 
       return base;
