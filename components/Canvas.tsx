@@ -127,6 +127,7 @@ const TableRenderer = ({ node }: { node: ComponentNode }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
+    const actionLabel = node.props.actionLabel;
 
     // Reset pagination if data changes
     useEffect(() => setCurrentPage(1), [data.length]);
@@ -142,6 +143,12 @@ const TableRenderer = ({ node }: { node: ComponentNode }) => {
 
     const totalPages = Math.ceil(filteredData.length / itemsPerPage);
     const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+    const handleActionClick = (row: any) => {
+        // In builder, we just show an alert to prove it works.
+        // In generated code, this will be a real function call.
+        alert(`Row Action Triggered!\n\nFunction: ${node.props.actionFunction || 'handleAction'}\nData: ${JSON.stringify(row, null, 2)}`);
+    };
 
     if (data.length === 0) return <div className="p-4 text-center text-gray-400">No data found in props.data</div>;
     
@@ -169,6 +176,7 @@ const TableRenderer = ({ node }: { node: ComponentNode }) => {
                             {headers.map(h => (
                                 <th key={h} className="px-4 py-3 font-semibold">{h}</th>
                             ))}
+                            {actionLabel && <th className="px-4 py-3 font-semibold text-right">Action</th>}
                         </tr>
                     </thead>
                     <tbody>
@@ -177,10 +185,20 @@ const TableRenderer = ({ node }: { node: ComponentNode }) => {
                                 {headers.map(h => (
                                     <td key={h} className="px-4 py-3 text-gray-600">{String((row as any)[h])}</td>
                                 ))}
+                                {actionLabel && (
+                                    <td className="px-4 py-3 text-right">
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); handleActionClick(row); }}
+                                            className="px-3 py-1.5 text-xs font-medium text-white bg-slate-800 rounded hover:bg-slate-700 transition-colors"
+                                        >
+                                            {actionLabel}
+                                        </button>
+                                    </td>
+                                )}
                             </tr>
                         )) : (
                             <tr>
-                                <td colSpan={headers.length} className="text-center py-4 text-gray-500">No matching records found</td>
+                                <td colSpan={headers.length + (actionLabel ? 1 : 0)} className="text-center py-4 text-gray-500">No matching records found</td>
                             </tr>
                         )}
                     </tbody>

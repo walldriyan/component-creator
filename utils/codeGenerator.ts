@@ -109,9 +109,12 @@ const collectImports = (node: ComponentNode, imports: Set<string>, components: S
         // Other Radix primitives are typically plain HTML with logic, but here we map what we use.
     }
     
-    // Table needs icons for pagination/search
+    // Table needs icons for pagination/search and potentially a Button if action is enabled
     if (node.type === 'table') {
         imports.add('import { Search, ChevronLeft, ChevronRight } from "lucide-react"');
+        if (node.props.actionLabel) {
+             if(node.library === 'shadcn') imports.add('import { Button } from "@/components/ui/button"');
+        }
     }
 
     node.children.forEach(child => collectImports(child, imports, components));
@@ -139,8 +142,23 @@ const generateNode = (node: ComponentNode, indent: number = 0): string => {
   if (node.type === 'table') {
       const dataStr = JSON.stringify(node.props.data || [], null, 2);
       const headers = node.props.data && node.props.data.length > 0 ? Object.keys(node.props.data[0]) : [];
+      const actionLabel = node.props.actionLabel;
+      const actionFunc = node.props.actionFunction || 'handleAction';
       
-      // Logic is hoisted to the main component, here we render the UI relying on state
+      // Action Button JSX
+      const actionButton = actionLabel 
+        ? `<td className="px-4 py-3 text-right">
+${spaces}             <button 
+${spaces}                 onClick={(e) => { e.stopPropagation(); ${actionFunc}(row); }}
+${spaces}                 className="px-3 py-1.5 text-xs font-medium text-white bg-slate-800 rounded hover:bg-slate-700 transition-colors"
+${spaces}             >
+${spaces}                 ${actionLabel}
+${spaces}             </button>
+${spaces}          </td>`
+        : '';
+
+      const actionHeader = actionLabel ? `<th className="px-4 py-3 font-semibold text-right">Action</th>` : '';
+
       return `
 ${spaces}<div ${classNameProp}>
 ${spaces}  <div className="p-3 border-b border-gray-200 bg-white flex items-center gap-2">
@@ -160,6 +178,7 @@ ${spaces}        <tr>
 ${spaces}          {${JSON.stringify(headers)}.map(h => (
 ${spaces}             <th key={h} className="px-4 py-3 font-semibold">{h}</th>
 ${spaces}          ))}
+${spaces}          ${actionHeader}
 ${spaces}        </tr>
 ${spaces}      </thead>
 ${spaces}      <tbody>
@@ -168,9 +187,10 @@ ${spaces}          <tr key={i} className="border-b last:border-0 even:bg-slate-5
 ${spaces}            {${JSON.stringify(headers)}.map(h => (
 ${spaces}               <td key={h} className="px-4 py-3 text-gray-600">{row[h]}</td>
 ${spaces}            ))}
+${spaces}            ${actionButton}
 ${spaces}          </tr>
 ${spaces}        )) : (
-${spaces}          <tr><td colSpan={${headers.length}} className="text-center py-4 text-gray-500">No records</td></tr>
+${spaces}          <tr><td colSpan={${headers.length + (actionLabel ? 1 : 0)}} className="text-center py-4 text-gray-500">No records</td></tr>
 ${spaces}        )}
 ${spaces}      </tbody>
 ${spaces}    </table>
@@ -267,17 +287,17 @@ export const generateFullCode = (root: ComponentNode) => {
   let componentLogic = '';
   
   if (useTable) {
-      // Find the table data. For this simple generator, we pick the first table's data or a generic one.
-      // In a real app you'd extract all data variables. Here we assume one table for simplicity of generation logic.
-      const findTableData = (n: ComponentNode): any => {
-          if (n.type === 'table') return n.props.data;
+      const findTableData = (n: ComponentNode): {data: any, func: string} | null => {
+          if (n.type === 'table') return { data: n.props.data, func: n.props.actionFunction || 'handleAction' };
           for (const c of n.children) {
               const d = findTableData(c);
               if (d) return d;
           }
           return null;
       }
-      const tableData = findTableData(root) || [];
+      const found = findTableData(root);
+      const tableData = found?.data || [];
+      const actionFunc = found?.func || 'handleAction';
       
       componentLogic = `
   const tableData = ${JSON.stringify(tableData, null, 2)};
@@ -296,6 +316,11 @@ export const generateFullCode = (root: ComponentNode) => {
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const ${actionFunc} = (row: any) => {
+     console.log("Row action clicked", row);
+     alert(JSON.stringify(row, null, 2));
+  };
       `;
   }
 

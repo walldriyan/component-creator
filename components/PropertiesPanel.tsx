@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { ComponentNode, LibraryType } from '../types';
-import { Settings2, Layout, Palette, Square, Star, Ban, MousePointerClick, Move, Code, TableProperties } from 'lucide-react';
+import { Settings2, Layout, Palette, Square, Star, Ban, MousePointerClick, Move, Code, TableProperties, MousePointer2 } from 'lucide-react';
 
 interface PropertiesPanelProps {
   node: ComponentNode | null;
@@ -94,8 +94,9 @@ export default function PropertiesPanel({ node, onChange, onStyleChange }: Prope
            </div>
         </section>
         
-        {/* Table Data Editor */}
+        {/* Table Properties */}
         {node.type === 'table' && (
+            <>
             <section>
                 <h3 className={sectionHeaderClass}><TableProperties size={14} /> Table Data (JSON)</h3>
                 <div>
@@ -109,6 +110,36 @@ export default function PropertiesPanel({ node, onChange, onStyleChange }: Prope
                     <p className="text-[10px] text-gray-400 mt-1">Paste array of objects. Columns are auto-generated.</p>
                 </div>
             </section>
+            
+            <section>
+                <h3 className={sectionHeaderClass}><MousePointer2 size={14} /> Table Actions</h3>
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1.5">Action Button Label</label>
+                        <input 
+                            type="text" 
+                            className={inputClass} 
+                            placeholder="e.g., Edit, View"
+                            value={node.props.actionLabel || ''} 
+                            onChange={(e) => onChange({ props: { ...node.props, actionLabel: e.target.value } })} 
+                        />
+                        <p className="text-[10px] text-gray-400 mt-1">Leave empty to hide the action column.</p>
+                    </div>
+                    {node.props.actionLabel && (
+                         <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1.5">Function Name</label>
+                            <input 
+                                type="text" 
+                                className={inputClass} 
+                                placeholder="handleRowClick"
+                                value={node.props.actionFunction || 'handleAction'} 
+                                onChange={(e) => onChange({ props: { ...node.props, actionFunction: e.target.value } })} 
+                            />
+                        </div>
+                    )}
+                </div>
+            </section>
+            </>
         )}
 
         {/* Positioning */}
