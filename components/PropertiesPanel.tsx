@@ -1,6 +1,6 @@
 import React from 'react';
 import { ComponentNode, LibraryType } from '../types';
-import { Settings2, Layout, Palette, Square, Star } from 'lucide-react';
+import { Settings2, Layout, Palette, Square, Star, Ban } from 'lucide-react';
 
 interface PropertiesPanelProps {
   node: ComponentNode | null;
@@ -32,43 +32,38 @@ export default function PropertiesPanel({ node, onChange, onStyleChange }: Prope
       </div>
 
       <div className="p-5 space-y-8">
-        
         {/* General Settings */}
         <section>
-           <h3 className={sectionHeaderClass}>
-               <Settings2 size={14} /> General
-           </h3>
+           <h3 className={sectionHeaderClass}><Settings2 size={14} /> General</h3>
            
            <div className="space-y-4">
              <div>
-               <label className="block text-xs font-medium text-gray-500 mb-1.5">Library Style</label>
+               <label className="block text-xs font-medium text-gray-500 mb-1.5">Library</label>
                <select className={inputClass} value={node.library} onChange={(e) => onChange({ library: e.target.value as LibraryType })}>
-                 <option value="plain">Tailwind (Default)</option>
-                 <option value="radix">Radix UI (Base)</option>
+                 <option value="plain">Tailwind</option>
+                 <option value="radix">Radix UI</option>
                  <option value="shadcn">Shadcn UI</option>
                </select>
              </div>
 
-             {(node.type === 'text' || node.type === 'button' || node.type === 'input') && (
+             {(node.type === 'text' || node.type === 'button' || node.type === 'input' || node.type === 'textarea' || node.type === 'select') && (
                <div>
-                 <label className="block text-xs font-medium text-gray-500 mb-1.5">Content / Label</label>
+                 <label className="block text-xs font-medium text-gray-500 mb-1.5">{node.type === 'input' || node.type === 'textarea' ? 'Placeholder' : 'Content'}</label>
                  <input type="text" className={inputClass} value={node.content || ''} onChange={(e) => onChange({ content: e.target.value })} />
                </div>
              )}
 
+            {(node.type === 'checkbox' || node.type === 'switch') && (
+                <div className="flex items-center gap-2 mt-2">
+                    <input type="checkbox" id="checkedState" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked={!!node.props.checked} onChange={(e) => onChange({ props: { ...node.props, checked: e.target.checked } })} />
+                    <label htmlFor="checkedState" className="text-sm text-gray-700">Checked by default</label>
+                </div>
+            )}
+
              {node.type === 'icon' && (
                  <div>
-                     <label className="block text-xs font-medium text-gray-500 mb-1.5 flex items-center gap-2">
-                         <Star size={12} /> Icon Name
-                     </label>
-                     <input 
-                        type="text" 
-                        className={inputClass} 
-                        value={node.iconName || ''} 
-                        onChange={(e) => onChange({ iconName: e.target.value })} 
-                        placeholder="Home, User, Settings..."
-                    />
-                     <p className="text-[10px] text-gray-400 mt-1">Use Lucide icon names (e.g. Home, User, Bell)</p>
+                     <label className="block text-xs font-medium text-gray-500 mb-1.5 flex items-center gap-2"><Star size={12} /> Icon Name</label>
+                     <input type="text" className={inputClass} value={node.iconName || ''} onChange={(e) => onChange({ iconName: e.target.value })} placeholder="Home, User..." />
                  </div>
              )}
            </div>
@@ -76,43 +71,16 @@ export default function PropertiesPanel({ node, onChange, onStyleChange }: Prope
 
         {/* Layout Settings */}
         <section>
-            <h3 className={sectionHeaderClass}>
-               <Layout size={14} /> Layout
-           </h3>
+            <h3 className={sectionHeaderClass}><Layout size={14} /> Layout</h3>
            <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
-                    <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1.5">Width</label>
-                        <input type="text" className={inputClass} placeholder="auto" value={node.style.width || ''} onChange={(e) => onStyleChange({ width: e.target.value })} />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1.5">Height</label>
-                        <input type="text" className={inputClass} placeholder="auto" value={node.style.height || ''} onChange={(e) => onStyleChange({ height: e.target.value })} />
-                    </div>
+                    <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Width</label><input type="text" className={inputClass} placeholder="auto" value={node.style.width || ''} onChange={(e) => onStyleChange({ width: e.target.value })} /></div>
+                    <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Height</label><input type="text" className={inputClass} placeholder="auto" value={node.style.height || ''} onChange={(e) => onStyleChange({ height: e.target.value })} /></div>
                 </div>
-                
-                {/* New Min/Max Width Controls */}
                 <div className="grid grid-cols-2 gap-3">
-                    <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1.5">Min Width</label>
-                        <input type="text" className={inputClass} placeholder="0px" value={node.style.minWidth || ''} onChange={(e) => onStyleChange({ minWidth: e.target.value })} />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1.5">Max Width</label>
-                        <input type="text" className={inputClass} placeholder="none" value={node.style.maxWidth || ''} onChange={(e) => onStyleChange({ maxWidth: e.target.value })} />
-                    </div>
+                    <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Min Width</label><input type="text" className={inputClass} placeholder="0px" value={node.style.minWidth || ''} onChange={(e) => onStyleChange({ minWidth: e.target.value })} /></div>
+                    <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Max Width</label><input type="text" className={inputClass} placeholder="none" value={node.style.maxWidth || ''} onChange={(e) => onStyleChange({ maxWidth: e.target.value })} /></div>
                 </div>
-
-                {/* New Overflow Control */}
-                 <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Overflow</label>
-                    <select className={inputClass} value={node.style.overflow || 'hidden'} onChange={(e) => onStyleChange({ overflow: e.target.value })}>
-                        <option value="visible">Visible</option>
-                        <option value="hidden">Hidden</option>
-                        <option value="scroll">Scroll</option>
-                        <option value="auto">Auto</option>
-                    </select>
-                 </div>
 
                 <div>
                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Flex Direction</label>
@@ -123,14 +91,8 @@ export default function PropertiesPanel({ node, onChange, onStyleChange }: Prope
                 </div>
 
                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1.5">Padding</label>
-                        <input type="text" className={inputClass} placeholder="5px" value={node.style.padding || ''} onChange={(e) => onStyleChange({ padding: e.target.value })} />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1.5">Gap</label>
-                        <input type="text" className={inputClass} placeholder="10px" value={node.style.gap || ''} onChange={(e) => onStyleChange({ gap: e.target.value })} />
-                    </div>
+                    <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Padding</label><input type="text" className={inputClass} placeholder="5px" value={node.style.padding || ''} onChange={(e) => onStyleChange({ padding: e.target.value })} /></div>
+                    <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Gap</label><input type="text" className={inputClass} placeholder="10px" value={node.style.gap || ''} onChange={(e) => onStyleChange({ gap: e.target.value })} /></div>
                 </div>
 
                  <div>
@@ -156,25 +118,22 @@ export default function PropertiesPanel({ node, onChange, onStyleChange }: Prope
 
         {/* Visuals */}
         <section>
-            <h3 className={sectionHeaderClass}>
-               <Palette size={14} /> Appearance
-           </h3>
+            <h3 className={sectionHeaderClass}><Palette size={14} /> Appearance</h3>
            <div className="space-y-4">
                <div>
-                   <label className="block text-xs font-medium text-gray-500 mb-1.5">Background</label>
+                   <div className="flex justify-between mb-1.5">
+                       <label className="block text-xs font-medium text-gray-500">Background</label>
+                       <button onClick={() => onStyleChange({ backgroundColor: 'transparent' })} className="text-[10px] text-blue-600 hover:underline flex items-center gap-1"><Ban size={10} /> Transparent</button>
+                   </div>
                    <div className="flex gap-2">
-                       <div className="relative w-9 h-9 shrink-0 overflow-hidden rounded-md border border-gray-200 shadow-sm">
-                            <input type="color" className="absolute -top-2 -left-2 w-16 h-16 cursor-pointer p-0 border-0" value={node.style.backgroundColor || '#ffffff'} onChange={(e) => onStyleChange({ backgroundColor: e.target.value })} />
-                       </div>
+                       <div className="relative w-9 h-9 shrink-0 overflow-hidden rounded-md border border-gray-200 shadow-sm"><input type="color" className="absolute -top-2 -left-2 w-16 h-16 cursor-pointer p-0 border-0" value={node.style.backgroundColor === 'transparent' ? '#ffffff' : node.style.backgroundColor || '#ffffff'} onChange={(e) => onStyleChange({ backgroundColor: e.target.value })} /></div>
                        <input type="text" className={inputClass} value={node.style.backgroundColor || ''} onChange={(e) => onStyleChange({ backgroundColor: e.target.value })} placeholder="#ffffff" />
                    </div>
                </div>
                <div>
                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Text Color</label>
                    <div className="flex gap-2">
-                       <div className="relative w-9 h-9 shrink-0 overflow-hidden rounded-md border border-gray-200 shadow-sm">
-                           <input type="color" className="absolute -top-2 -left-2 w-16 h-16 cursor-pointer" value={node.style.color || '#000000'} onChange={(e) => onStyleChange({ color: e.target.value })} />
-                       </div>
+                       <div className="relative w-9 h-9 shrink-0 overflow-hidden rounded-md border border-gray-200 shadow-sm"><input type="color" className="absolute -top-2 -left-2 w-16 h-16 cursor-pointer" value={node.style.color || '#000000'} onChange={(e) => onStyleChange({ color: e.target.value })} /></div>
                         <input type="text" className={inputClass} value={node.style.color || ''} onChange={(e) => onStyleChange({ color: e.target.value })} placeholder="#000000" />
                    </div>
                </div>
@@ -184,40 +143,21 @@ export default function PropertiesPanel({ node, onChange, onStyleChange }: Prope
                 </div>
            </div>
         </section>
-
+        
         {/* Border Settings */}
         <section>
-            <h3 className={sectionHeaderClass}>
-               <Square size={14} /> Border
-           </h3>
+            <h3 className={sectionHeaderClass}><Square size={14} /> Border</h3>
            <div className="space-y-4">
                <div className="grid grid-cols-2 gap-3">
-                   <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1.5">Radius</label>
-                        <input type="text" className={inputClass} placeholder="4px" value={node.style.borderRadius || ''} onChange={(e) => onStyleChange({ borderRadius: e.target.value })} />
-                   </div>
-                    <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1.5">Width</label>
-                        <input type="text" className={inputClass} placeholder="1px" value={node.style.borderWidth || ''} onChange={(e) => onStyleChange({ borderWidth: e.target.value })} />
-                   </div>
+                   <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Radius</label><input type="text" className={inputClass} placeholder="4px" value={node.style.borderRadius || ''} onChange={(e) => onStyleChange({ borderRadius: e.target.value })} /></div>
+                    <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Width</label><input type="text" className={inputClass} placeholder="1px" value={node.style.borderWidth || ''} onChange={(e) => onStyleChange({ borderWidth: e.target.value })} /></div>
                </div>
                <div>
                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Border Color</label>
                    <div className="flex gap-2">
-                       <div className="relative w-9 h-9 shrink-0 overflow-hidden rounded-md border border-gray-200 shadow-sm">
-                            <input type="color" className="absolute -top-2 -left-2 w-16 h-16 cursor-pointer p-0 border-0" value={node.style.borderColor || '#e5e7eb'} onChange={(e) => onStyleChange({ borderColor: e.target.value })} />
-                       </div>
+                       <div className="relative w-9 h-9 shrink-0 overflow-hidden rounded-md border border-gray-200 shadow-sm"><input type="color" className="absolute -top-2 -left-2 w-16 h-16 cursor-pointer p-0 border-0" value={node.style.borderColor || '#e5e7eb'} onChange={(e) => onStyleChange({ borderColor: e.target.value })} /></div>
                        <input type="text" className={inputClass} value={node.style.borderColor || ''} onChange={(e) => onStyleChange({ borderColor: e.target.value })} placeholder="#e5e7eb" />
                    </div>
-               </div>
-               <div>
-                   <label className="block text-xs font-medium text-gray-500 mb-1.5">Style</label>
-                   <select className={inputClass} value={node.style.borderStyle || 'none'} onChange={(e) => onStyleChange({ borderStyle: e.target.value })}>
-                       <option value="none">None</option>
-                       <option value="solid">Solid</option>
-                       <option value="dashed">Dashed</option>
-                       <option value="dotted">Dotted</option>
-                   </select>
                </div>
            </div>
         </section>

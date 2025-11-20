@@ -1,7 +1,6 @@
-import React, { MouseEvent, useRef, useState, useEffect, useLayoutEffect } from 'react';
-import { createPortal } from 'react-dom';
+import React, { MouseEvent, useRef, useState, useLayoutEffect, useEffect, useMemo } from 'react';
 import { ComponentNode } from '../types';
-import { Trash2, Home, User, Settings, Bell, Search, Menu, Star, Heart, Share, ArrowRight, Box, Check, X, Layout, Maximize2, Minimize2, Link as LinkIcon, Image as ImageIcon, GripHorizontal, Square, Scaling, Copy, CopyPlus } from 'lucide-react';
+import { Settings, Home, User, Bell, Search, Menu, Star, Heart, Share, ArrowRight, Box, Check, X, Layout, Maximize2, Scaling, Copy, CreditCard, Link as LinkIcon, Image as ImageIcon, Square, Minimize2, MoveHorizontal, MoveVertical, ChevronDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -9,7 +8,7 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// Icon mapping for dynamic rendering
+// Define outside component to prevent recreation
 const IconMap: Record<string, any> = {
   Home, User, Settings, Bell, Search, Menu, Star, Heart, Share, ArrowRight, Box, Check, X, Layout
 };
@@ -21,6 +20,7 @@ interface CanvasProps {
   onDrop: (e: React.DragEvent, targetId: string, index?: number) => void;
   onDelete: (id: string) => void;
   onDuplicate?: (id: string, direction: 'before' | 'after') => void;
+  onWrap?: (id: string, type: 'container' | 'card') => void;
   onResize: (id: string, style: any) => void;
   onUpdate?: (id: string, updates: Partial<ComponentNode> | any) => void;
   index?: number;
@@ -29,13 +29,12 @@ interface CanvasProps {
 
 const getComponentClasses = (node: ComponentNode, isSelected: boolean) => {
   const { style, library, type } = node;
-  const base = "relative transition-all duration-200 ease-in-out"; 
-  const selection = isSelected ? "ring-2 ring-blue-500 ring-offset-2 z-10" : "hover:ring-1 hover:ring-blue-300 ring-offset-1";
+  const base = "relative transition-all duration-200 ease-in-out group"; 
+  const selection = isSelected ? "z-10" : "hover:ring-1 hover:ring-blue-300 ring-offset-1";
   
-  // Simulate Library Styles
   let libStyles = "";
+  // Library specific styling logic
   if (library === 'shadcn') {
-    // Shadcn Button Base Styles
     if (type === 'button') {
         const variant = node.props.variant || 'default';
         if (variant === 'default') libStyles = "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-slate-900 text-white hover:bg-slate-900/90 h-10 px-4 py-2";
@@ -43,17 +42,16 @@ const getComponentClasses = (node: ComponentNode, isSelected: boolean) => {
         else if (variant === 'ghost') libStyles = "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none hover:bg-slate-100 hover:text-slate-900 h-10 px-4 py-2";
         else if (variant === 'outline') libStyles = "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none border border-slate-200 bg-white hover:bg-slate-100 hover:text-slate-900 h-10 px-4 py-2";
     } 
-    if (type === 'card') libStyles = "rounded-lg border bg-white text-slate-950 shadow-sm";
+    if (type === 'card') libStyles = "rounded-lg border text-slate-950 shadow-sm";
     if (type === 'input') libStyles = "flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
-  } else if (library === 'radix') {
-     if (type === 'button') libStyles = "bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded text-sm";
-  } else {
-     if (type === 'button') libStyles = "bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 shadow-sm";
-     if (type === 'card') libStyles = "bg-white border border-gray-200 rounded shadow-sm";
-     if (type === 'input') libStyles = "border border-gray-300 rounded p-2 w-full";
-  }
+    if (type === 'textarea') libStyles = "flex min-h-[80px] w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
+    if (type === 'checkbox') libStyles = "h-4 w-4 shrink-0 rounded-sm border border-slate-900 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-slate-900 data-[state=checked]:text-slate-50";
+    if (type === 'switch') libStyles = "peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-slate-900 data-[state=unchecked]:bg-slate-200";
+    if (type === 'select') libStyles = "flex h-10 w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1";
+    if (type === 'divider') libStyles = "shrink-0 bg-slate-200";
+  } 
 
-  // Tailwind Utility Class Construction
+  // Tailwind Utility Construction
   const dynamicStyles = [
     style.backgroundColor ? `bg-[${style.backgroundColor}]` : '',
     style.color ? `text-[${style.color}]` : '',
@@ -64,16 +62,18 @@ const getComponentClasses = (node: ComponentNode, isSelected: boolean) => {
     (style.borderWidth && style.borderWidth !== '0px') ? `border-[${style.borderWidth}]` : '',
     style.borderColor ? `border-[${style.borderColor}]` : '',
     (style.borderStyle && style.borderStyle !== 'none') ? `border-${style.borderStyle}` : '',
-    style.width === '100%' ? 'w-full' : style.width === 'auto' ? 'w-auto' : style.width ? `w-[${style.width}]` : '',
-    style.height === '100%' ? 'h-full' : style.height === 'auto' ? 'h-auto' : style.height ? `h-[${style.height}]` : '',
-    style.minHeight ? `min-h-[${style.minHeight}]` : '',
     
-    // New Properties
+    style.width === '100%' ? 'w-full' : style.width === 'auto' ? 'w-auto' : '',
+    
+    // Logic for Height: If auto, ensure min-h-[20px] unless a specific minHeight is set
+    style.height === '100%' ? 'h-full' : style.height === 'auto' ? 'h-auto min-h-[20px]' : '',
+    
+    (!style.height || style.height === 'auto' || style.height === '100%') && style.minHeight ? `min-h-[${style.minHeight}]` : '',
+    
     style.maxWidth ? `max-w-[${style.maxWidth}]` : '',
     style.minWidth ? `min-w-[${style.minWidth}]` : '',
     style.overflow ? `overflow-${style.overflow}` : '',
 
-    // Flex and Gap Logic
     (style.flexDirection || style.gap || style.justifyContent || style.alignItems) ? 'flex' : '',
     style.flexDirection === 'row' ? 'flex-row' : style.flexDirection === 'column' ? 'flex-col' : '',
     style.flexGrow === 1 ? 'grow' : style.flexGrow === 0 ? 'grow-0' : '',
@@ -89,32 +89,38 @@ const getComponentClasses = (node: ComponentNode, isSelected: boolean) => {
   return cn(base, selection, libStyles, dynamicStyles);
 };
 
-const CanvasRenderer: React.FC<CanvasProps> = ({ node, selectedId, onSelect, onDrop, onDelete, onResize, onUpdate, onDuplicate, index = 0, parentId = null }) => {
+// Use React.memo to prevent unnecessary re-renders of the entire tree when a leaf node changes
+const CanvasRenderer: React.FC<CanvasProps> = React.memo(({ node, selectedId, onSelect, onDrop, onDelete, onResize, onUpdate, onDuplicate, onWrap, index = 0, parentId = null }) => {
   const isSelected = selectedId === node.id;
   const elementRef = useRef<HTMLDivElement>(null);
-  
-  // State to track menu position
   const [menuPosition, setMenuPosition] = useState<{top: number, left: number, height: number} | null>(null);
+  const [resizeFeedback, setResizeFeedback] = useState<{w: number, h: number} | null>(null);
+  const [dragPosition, setDragPosition] = useState<'top' | 'bottom' | 'inside' | null>(null);
 
-  // Update menu position when selected or scrolled/resized
+  useEffect(() => {
+    const clearDragState = () => setDragPosition(null);
+    window.addEventListener('dragend', clearDragState);
+    window.addEventListener('drop', clearDragState);
+    window.addEventListener('mouseup', clearDragState);
+
+    return () => {
+      window.removeEventListener('dragend', clearDragState);
+      window.removeEventListener('drop', clearDragState);
+      window.removeEventListener('mouseup', clearDragState);
+    };
+  }, []);
+
   useLayoutEffect(() => {
       if (isSelected && elementRef.current) {
           const updatePosition = () => {
               if (elementRef.current) {
                   const rect = elementRef.current.getBoundingClientRect();
-                  setMenuPosition({
-                      top: rect.top + window.scrollY,
-                      left: rect.left + window.scrollX,
-                      height: rect.height
-                  });
+                  setMenuPosition({ top: rect.top, left: rect.left, height: rect.height });
               }
           };
-          
           updatePosition();
-          // Capture scroll events on window to handle any parent scrolling
           window.addEventListener('scroll', updatePosition, true);
           window.addEventListener('resize', updatePosition);
-          
           return () => {
               window.removeEventListener('scroll', updatePosition, true);
               window.removeEventListener('resize', updatePosition);
@@ -122,20 +128,17 @@ const CanvasRenderer: React.FC<CanvasProps> = ({ node, selectedId, onSelect, onD
       } else {
           setMenuPosition(null);
       }
-  }, [isSelected, node, index]); // Recalculate on node updates
-
-  // Drag Over State: 'top' | 'bottom' | 'inside' | null
-  const [dragPosition, setDragPosition] = useState<'top' | 'bottom' | 'inside' | null>(null);
+  }, [isSelected, node.style.width, node.style.height, resizeFeedback]); // Only re-calc if size changes
 
   const handleDragStart = (e: React.DragEvent) => {
       e.stopPropagation();
       e.dataTransfer.setData('nodeId', node.id);
       e.dataTransfer.effectAllowed = "move";
-
+      
+      // Create a simpler drag image to reduce memory overhead of large DOM clones
       const dragIcon = document.createElement('div');
       dragIcon.innerHTML = `
-        <div style="background: #3b82f6; color: white; padding: 8px 12px; border-radius: 6px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); font-family: sans-serif; font-size: 12px;">
-           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/></svg>
+        <div style="background: #3b82f6; color: white; padding: 6px 10px; border-radius: 4px; font-family: sans-serif; font-size: 12px; font-weight: 600;">
            Moving ${node.name}
         </div>
       `;
@@ -143,7 +146,8 @@ const CanvasRenderer: React.FC<CanvasProps> = ({ node, selectedId, onSelect, onD
       dragIcon.style.top = '-1000px';
       document.body.appendChild(dragIcon);
       e.dataTransfer.setDragImage(dragIcon, 0, 0);
-      setTimeout(() => document.body.removeChild(dragIcon), 0);
+      // Cleanup immediately after next frame
+      requestAnimationFrame(() => document.body.removeChild(dragIcon));
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -151,261 +155,213 @@ const CanvasRenderer: React.FC<CanvasProps> = ({ node, selectedId, onSelect, onD
     e.stopPropagation();
     
     if (!elementRef.current) return;
+    const draggedNodeId = e.dataTransfer.getData('nodeId');
+    if (draggedNodeId === node.id) return;
 
     const rect = elementRef.current.getBoundingClientRect();
-    const clientY = e.clientY;
-    
-    // Check if node is a container that accepts children "inside"
-    const isContainer = node.type === 'container' || node.type === 'card' || (node.type === 'button' && node.children.length > 0);
-    
     const height = rect.height;
-    const relativeY = clientY - rect.top;
+    const relativeY = e.clientY - rect.top;
     
-    // If it's a container and we are in the middle zone, drop inside (append)
-    if (isContainer && relativeY > 10 && relativeY < height - 10) {
-        setDragPosition('inside');
-        return;
-    }
+    const isLeaf = ['text', 'image', 'input', 'icon', 'switch', 'checkbox', 'divider', 'textarea', 'select'].includes(node.type);
+    const canAcceptChildren = !isLeaf;
+    
+    let newPosition: 'top' | 'bottom' | 'inside' | null = null;
 
-    // Otherwise, decide Top or Bottom relative to THIS element in the parent's list
-    if (relativeY < height / 2) {
-        setDragPosition('top');
+    if (canAcceptChildren) {
+        const edgeThreshold = 15;
+        if (relativeY < edgeThreshold) newPosition = 'top';
+        else if (relativeY > height - edgeThreshold) newPosition = 'bottom';
+        else newPosition = 'inside';
     } else {
-        setDragPosition('bottom');
+        newPosition = relativeY < height / 2 ? 'top' : 'bottom';
     }
+    
+    if (dragPosition !== newPosition) setDragPosition(newPosition);
   };
   
-  const handleDragLeave = (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setDragPosition(null);
-  };
-
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    const draggedNodeId = e.dataTransfer.getData('nodeId');
-    if (draggedNodeId === node.id) {
-        setDragPosition(null);
-        return;
-    }
-
-    if (dragPosition === 'inside') {
-        // Drop inside this node (append to end)
-        onDrop(e, node.id); 
-    } else if (dragPosition === 'top') {
-        // Drop into PARENT, at this node's index
-        if (parentId) {
-             onDrop(e, parentId, index);
-        }
-    } else if (dragPosition === 'bottom') {
-        // Drop into PARENT, at this node's index + 1
-        if (parentId) {
-             onDrop(e, parentId, index + 1);
-        }
-    }
-    
     setDragPosition(null);
+    const draggedNodeId = e.dataTransfer.getData('nodeId');
+    if (draggedNodeId === node.id) return;
+
+    if (dragPosition === 'inside') onDrop(e, node.id); 
+    else if (dragPosition === 'top' && parentId) onDrop(e, parentId, index);
+    else if (dragPosition === 'bottom' && parentId) onDrop(e, parentId, index + 1);
   };
 
-  const handleClick = (e: MouseEvent) => {
-    e.stopPropagation();
-    onSelect(node.id);
+  const handleResizeStart = (e: React.MouseEvent, direction: 'right' | 'bottom' | 'corner') => {
+      e.preventDefault();
+      e.stopPropagation();
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startW = elementRef.current?.offsetWidth || 0;
+      const startH = elementRef.current?.offsetHeight || 0;
+      
+      setResizeFeedback({ w: startW, h: startH });
+
+      const onMouseMove = (moveEvent: MouseEvent | any) => {
+          const dx = moveEvent.clientX - startX;
+          const dy = moveEvent.clientY - startY;
+          
+          const newStyle: any = {};
+          let newW = startW;
+          let newH = startH;
+          
+          if (direction === 'right' || direction === 'corner') {
+              newW = Math.max(20, startW + dx);
+              newStyle.width = `${newW}px`;
+              newStyle.maxWidth = 'none'; 
+          }
+          if (direction === 'bottom' || direction === 'corner') {
+              newH = Math.max(20, startH + dy);
+              newStyle.height = `${newH}px`;
+              newStyle.minHeight = '0px'; 
+              newStyle.flexGrow = 0; 
+          }
+          setResizeFeedback({ w: newW, h: newH });
+          onResize(node.id, newStyle);
+      };
+
+      const onMouseUp = () => {
+          setResizeFeedback(null);
+          window.removeEventListener('mousemove', onMouseMove);
+          window.removeEventListener('mouseup', onMouseUp);
+      };
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
   };
+
+  const toggleWidth = (e: MouseEvent) => { 
+      e.stopPropagation(); 
+      if(onUpdate) {
+          // Logic: If 100%, go to auto. If auto, go to 100%. If fixed, go to auto.
+          const newWidth = node.style.width === '100%' ? 'auto' : '100%';
+          onUpdate(node.id, { style: { ...node.style, width: newWidth, maxWidth: undefined }});
+      }
+  }
+  const toggleHeight = (e: MouseEvent) => { 
+      e.stopPropagation(); 
+      if(onUpdate) {
+          // Logic: If 100%, go to auto. If auto, go to 100%. If fixed, go to auto.
+          const newHeight = node.style.height === '100%' ? 'auto' : '100%';
+          // Reset minHeight when toggling to auto to avoid conflicts
+          onUpdate(node.id, { style: { ...node.style, height: newHeight, minHeight: undefined }});
+      }
+  }
   
-  const handleDelete = (e: MouseEvent) => {
+  const toggleGrow = (e: MouseEvent) => {
       e.stopPropagation();
-      onDelete(node.id);
+      if(onUpdate) onUpdate(node.id, { style: { ...node.style, flexGrow: node.style.flexGrow === 1 ? 0 : 1 }});
   }
-
-  const handleDuplicateBefore = (e: MouseEvent) => {
-      e.stopPropagation();
-      if (onDuplicate) onDuplicate(node.id, 'before');
-  }
-
-  const handleDuplicateAfter = (e: MouseEvent) => {
-      e.stopPropagation();
-      if (onDuplicate) onDuplicate(node.id, 'after');
-  }
-
-  const handleResizeStart = (e: React.MouseEvent, direction: string) => {
-    e.stopPropagation();
-    e.preventDefault();
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const startRect = elementRef.current?.getBoundingClientRect();
-    if (!startRect) return;
-
-    const handleMouseMove = (moveEvent: globalThis.MouseEvent) => {
-        const deltaX = moveEvent.clientX - startX;
-        const deltaY = moveEvent.clientY - startY;
-        const newStyle: any = {};
-        if (direction.includes('e')) newStyle.width = `${Math.max(20, startRect.width + deltaX)}px`;
-        if (direction.includes('s')) newStyle.height = `${Math.max(20, startRect.height + deltaY)}px`;
-        onResize(node.id, newStyle);
-    };
-    const handleMouseUp = () => {
-        window.removeEventListener('mousemove', handleMouseMove);
-        window.removeEventListener('mouseup', handleMouseUp);
-    };
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-  };
-
-  // --- Popup Toolbar Handlers ---
-  const toggleWidth = (e: MouseEvent) => { e.stopPropagation(); if(onUpdate) onUpdate(node.id, { style: { ...node.style, width: node.style.width === '100%' ? 'auto' : '100%' }}); }
-  const toggleHeight = (e: MouseEvent) => { e.stopPropagation(); if(onUpdate) onUpdate(node.id, { style: { ...node.style, height: node.style.height === '100%' ? 'auto' : '100%' }}); }
-  const toggleGrow = (e: MouseEvent) => { e.stopPropagation(); if(onUpdate) onUpdate(node.id, { style: { ...node.style, flexGrow: node.style.flexGrow === 1 ? 0 : 1 }}); }
-  const toggleBorder = (e: MouseEvent) => { e.stopPropagation(); if(onUpdate) onUpdate(node.id, { style: { ...node.style, borderWidth: (node.style.borderWidth && node.style.borderWidth !== '0px') ? '0px' : '1px' }}); }
-  const addLink = (e: MouseEvent) => { e.stopPropagation(); const url = prompt("Enter URL:", node.href || ""); if (url !== null && onUpdate) onUpdate(node.id, { href: url }); }
-  const changeImage = (e: MouseEvent) => { e.stopPropagation(); const url = prompt("Enter Image URL:", node.content || ""); if (url !== null && onUpdate) onUpdate(node.id, { content: url }); }
-
-  const classes = getComponentClasses(node, isSelected);
-
-  // Popup Menu Component (Using Portal)
-  const renderPopupMenu = () => {
-      if (!isSelected || node.id === 'root' || !menuPosition) return null;
-      
-      // Calculate positioning logic
-      let top = menuPosition.top - 48; // Default: 48px above the element
-      const left = menuPosition.left;
-
-      // If the element is too close to the top of the viewport/page, flip menu to the bottom
-      // We use a simple check against the viewport top
-      const viewportY = menuPosition.top - window.scrollY;
-      if (viewportY < 60) {
-          top = menuPosition.top + menuPosition.height + 10;
-      }
-
-      const menu = (
-          <div 
-            style={{ top: `${top}px`, left: `${left}px` }}
-            className="fixed h-10 bg-slate-800 text-white rounded-md shadow-xl flex items-center px-2 gap-1 z-[9999] animate-in fade-in zoom-in-95 duration-100"
-            onMouseDown={(e) => e.stopPropagation()} // Prevent selection loss
-          >
-              <div className="flex items-center gap-1 pr-2 border-r border-slate-600">
-                <button onClick={toggleWidth} title="Toggle Width" className={cn("p-1.5 rounded hover:bg-slate-700", node.style.width === '100%' && "bg-blue-600")}><Maximize2 size={14} className="rotate-90" /></button>
-                <button onClick={toggleHeight} title="Toggle Height" className={cn("p-1.5 rounded hover:bg-slate-700", node.style.height === '100%' && "bg-blue-600")}><Maximize2 size={14} /></button>
-                <button onClick={toggleGrow} title="Toggle Flex Grow" className={cn("p-1.5 rounded hover:bg-slate-700", node.style.flexGrow === 1 && "bg-blue-600")}><Scaling size={14} /></button>
-              </div>
-              <div className="flex items-center gap-1 px-1 border-r border-slate-600 pr-2">
-                 <button onClick={toggleBorder} title="Toggle Border" className={cn("p-1.5 rounded hover:bg-slate-700", node.style.borderWidth === '1px' && "bg-blue-600")}><Square size={14} /></button>
-                 <button onClick={addLink} title="Link" className={cn("p-1.5 rounded hover:bg-slate-700", node.href && "text-green-400")}><LinkIcon size={14} /></button>
-                 {node.type === 'image' && <button onClick={changeImage} className="p-1.5 rounded hover:bg-slate-700"><ImageIcon size={14} /></button>}
-              </div>
-               <div className="flex items-center gap-1 px-1 border-r border-slate-600 pr-2">
-                 <button onClick={handleDuplicateBefore} title="Duplicate Before" className="p-1.5 rounded hover:bg-slate-700 text-slate-300"><Copy size={14} className="rotate-180"/></button>
-                 <button onClick={handleDuplicateAfter} title="Duplicate After" className="p-1.5 rounded hover:bg-slate-700 text-slate-300"><CopyPlus size={14} /></button>
-               </div>
-               <div className="flex items-center pl-1 ml-1">
-                  <button onClick={handleDelete} className="p-1.5 rounded hover:bg-red-600 text-red-400 hover:text-white"><Trash2 size={14} /></button>
-               </div>
-          </div>
-      );
-
-      return createPortal(menu, document.body);
-  };
-
-  const renderHandles = () => {
-      if (!isSelected || node.id === 'root') return null;
-      return (
-          <>
-             <div className="absolute right-[-4px] top-1/2 -translate-y-1/2 w-2 h-4 bg-blue-500 cursor-e-resize rounded z-50 opacity-0 group-hover:opacity-100 transition-opacity" onMouseDown={(e) => handleResizeStart(e, 'e')} />
-             <div className="absolute bottom-[-4px] left-1/2 -translate-x-1/2 w-4 h-2 bg-blue-500 cursor-s-resize rounded z-50 opacity-0 group-hover:opacity-100 transition-opacity" onMouseDown={(e) => handleResizeStart(e, 's')} />
-             <div className="absolute bottom-[-5px] right-[-5px] w-3 h-3 bg-white border-2 border-blue-500 cursor-se-resize rounded-full z-50" onMouseDown={(e) => handleResizeStart(e, 'se')} />
-          </>
-      );
-  };
-
-  // Render Drop Indicators (Blue Lines)
-  const renderDropIndicator = () => {
-      if (!dragPosition) return null;
-      
-      if (dragPosition === 'inside') {
-          return <div className="absolute inset-0 border-2 border-blue-500 bg-blue-50/20 rounded-lg pointer-events-none z-50 animate-pulse" />
-      }
-      if (dragPosition === 'top') {
-          return <div className="absolute -top-1 left-0 right-0 h-1 bg-blue-500 rounded pointer-events-none z-50 shadow-sm" />
-      }
-      if (dragPosition === 'bottom') {
-          return <div className="absolute -bottom-1 left-0 right-0 h-1 bg-blue-500 rounded pointer-events-none z-50 shadow-sm" />
-      }
-      return null;
-  }
-
-  const structuralStyles = { 
-      width: node.style.width, height: node.style.height,
-      maxWidth: node.style.maxWidth, minWidth: node.style.minWidth,
-      overflow: node.style.overflow as any,
-      borderWidth: node.style.borderWidth, borderColor: node.style.borderColor, borderStyle: node.style.borderStyle as any,
-      borderRight: node.style.borderRight, borderBottom: node.style.borderBottom, marginBottom: node.style.marginBottom,
-      gap: node.style.gap, display: (node.style.flexDirection || node.style.gap || node.type === 'container' || node.type === 'button') ? 'flex' : undefined,
-      flexDirection: node.style.flexDirection as any, justifyContent: node.style.justifyContent, alignItems: node.style.alignItems,
-      flexGrow: node.style.flexGrow, padding: node.style.padding 
-  };
 
   const renderContent = () => {
-    if (node.type === 'text') return node.content || 'Text';
-    if (node.type === 'button') {
-        if (node.children && node.children.length > 0) {
-            return node.children.map((child, idx) => (
-                <CanvasRenderer key={child.id} node={child} selectedId={selectedId} onSelect={onSelect} onDrop={onDrop} onDelete={onDelete} onResize={onResize} onUpdate={onUpdate} onDuplicate={onDuplicate} index={idx} parentId={node.id} />
-            ));
-        }
-        return node.content || 'Button';
-    }
-    if (node.type === 'input') return null; 
-    if (node.type === 'image') return <img src={node.content || "https://picsum.photos/200/200"} className="w-full h-full object-cover rounded" alt="placeholder" draggable={false}/>
-    if (node.type === 'icon') {
-        const IconComponent = IconMap[node.iconName || 'Box'] || Box;
-        return <IconComponent size={20} />;
-    }
-    
-    return node.children.map((child, idx) => (
-      <CanvasRenderer key={child.id} node={child} selectedId={selectedId} onSelect={onSelect} onDrop={onDrop} onDelete={onDelete} onResize={onResize} onUpdate={onUpdate} onDuplicate={onDuplicate} index={idx} parentId={node.id} />
-    ));
+      if (node.type === 'text') return <div className="pointer-events-none">{node.content}</div>;
+      if (node.type === 'button') return node.children.length > 0 ? null : <span className="pointer-events-none">{node.content}</span>;
+      if (node.type === 'input') return <input disabled placeholder={node.content} className="w-full h-full bg-transparent outline-none pointer-events-none text-slate-500" />;
+      if (node.type === 'textarea') return <textarea disabled placeholder={node.content} className="w-full h-full bg-transparent outline-none pointer-events-none text-slate-500 resize-none" />;
+      if (node.type === 'checkbox') return <div className="flex items-center justify-center pointer-events-none">{node.props.checked && <Check size={12} />}</div>;
+      if (node.type === 'switch') return <div className="h-5 w-5 rounded-full bg-white shadow-sm transition-all translate-x-0.5 data-[state=checked]:translate-x-5" data-state={node.props.checked ? 'checked' : 'unchecked'} />;
+      if (node.type === 'select') return <><span className="text-muted-foreground pointer-events-none">{node.content || 'Select...'}</span><ChevronDown size={16} className="opacity-50" /></>;
+      
+      // Fix: Render a much more visible divider in editor
+      if (node.type === 'divider') return <div className="w-full h-[2px] bg-slate-300 my-2 min-w-[40px]" />;
+      
+      if (node.type === 'image') return <img src={node.content || 'https://picsum.photos/200'} alt="" className="w-full h-full object-cover pointer-events-none" />;
+      if (node.type === 'icon' && node.iconName) return React.createElement(IconMap[node.iconName] || Box, { size: 24, className: "pointer-events-none" });
+      return null;
   };
 
-  const emptyHelper = (node.type === 'container' && node.children.length === 0 && !node.style.minHeight)
-    ? { minHeight: '80px', borderStyle: 'dashed', borderWidth: '2px', borderColor: '#e5e7eb' }
-    : {};
-  
-  const linkIndicator = node.href ? ( <div className="absolute top-1 right-1 bg-green-500 text-white p-0.5 rounded-full z-20 pointer-events-none"><LinkIcon size={8} /></div> ) : null;
-
-  // Wrapper for non-container elements (Leaf nodes) to handle DragOver logic correctly
-  if (node.type === 'input' || node.type === 'icon') {
-      return (
-        <div ref={elementRef} className="relative group inline-block" onClick={handleClick} draggable onDragStart={handleDragStart} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} style={structuralStyles} >
-             {node.type === 'input' ? <input type="text" placeholder={node.content || "Input..."} className={classes} readOnly /> : <div className={classes}>{renderContent()}</div>}
-            {linkIndicator}
-            {renderHandles()}
-            {renderPopupMenu()} 
-            {renderDropIndicator()}
-        </div>
-      )
-  }
-
   return (
-    <div
-      ref={elementRef}
-      className={cn(classes, "group")}
-      onClick={handleClick}
-      draggable={node.id !== 'root'}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      style={{ ...structuralStyles, ...emptyHelper }}
-    >
-      {linkIndicator}
-      {renderHandles()}
-      {renderPopupMenu()}
-      {renderDropIndicator()}
-      {node.id === 'root' && <div className="absolute top-0 left-0 bg-blue-100 text-blue-800 text-[10px] px-2 py-0.5 rounded-br uppercase font-bold tracking-wider opacity-50 pointer-events-none">Canvas</div>}
-      {renderContent()}
-    </div>
+    <>
+      {/* Popover Portal */}
+      {isSelected && menuPosition && node.id !== 'root' && (
+           <div 
+            style={{ top: `${menuPosition.top < 50 ? menuPosition.top + menuPosition.height + 10 : menuPosition.top - 48}px`, left: `${menuPosition.left}px`, position: 'fixed' }}
+            className="h-10 bg-slate-800 text-white rounded-md shadow-xl flex items-center px-2 gap-1 z-[9999] animate-in fade-in zoom-in-95 duration-100 select-none"
+            onMouseDown={(e) => e.stopPropagation()} 
+          >
+             {/* Size Controls */}
+             <button onClick={toggleWidth} title={`Width: ${node.style.width || 'auto'}`} className={cn("p-1.5 rounded hover:bg-slate-700 transition-colors", node.style.width === '100%' ? "bg-blue-600 text-white" : "text-slate-300")}><MoveHorizontal size={14} /></button>
+             <button onClick={toggleHeight} title={`Height: ${node.style.height || 'auto'}`} className={cn("p-1.5 rounded hover:bg-slate-700 transition-colors", node.style.height === '100%' ? "bg-blue-600 text-white" : "text-slate-300")}><MoveVertical size={14} /></button>
+             <button onClick={toggleGrow} title="Toggle Flex Grow" className={cn("p-1.5 rounded hover:bg-slate-700 transition-colors", node.style.flexGrow === 1 ? "bg-green-600 text-white" : "text-slate-300")}><Scaling size={14} /></button>
+             
+             <div className="w-[1px] h-4 bg-slate-600 mx-1"></div>
+             
+             {/* Wrap Controls */}
+             <button onClick={(e) => { e.stopPropagation(); if(onWrap) onWrap(node.id, 'container'); }} title="Wrap in Container" className="p-1.5 rounded hover:bg-slate-700 text-slate-300 hover:text-white"><Box size={14} /></button>
+             <button onClick={(e) => { e.stopPropagation(); if(onWrap) onWrap(node.id, 'card'); }} title="Wrap in Card" className="p-1.5 rounded hover:bg-slate-700 text-slate-300 hover:text-white"><CreditCard size={14} /></button>
+             
+             <div className="w-[1px] h-4 bg-slate-600 mx-1"></div>
+
+             {/* Duplication */}
+             <button onClick={(e) => { e.stopPropagation(); if(onDuplicate) onDuplicate(node.id, 'before'); }} title="Duplicate Before" className="p-1.5 rounded hover:bg-slate-700 text-slate-300 hover:text-white"><ArrowUp size={14} /></button>
+             <button onClick={(e) => { e.stopPropagation(); if(onDuplicate) onDuplicate(node.id, 'after'); }} title="Duplicate After" className="p-1.5 rounded hover:bg-slate-700 text-slate-300 hover:text-white"><ArrowDown size={14} /></button>
+             
+             <div className="w-[1px] h-4 bg-slate-600 mx-1"></div>
+             
+             {/* Delete */}
+             <button onClick={(e) => { e.stopPropagation(); onDelete(node.id); }} title="Delete" className="p-1.5 rounded hover:bg-red-600 text-slate-300 hover:text-white"><X size={14} /></button>
+          </div>
+      )}
+
+      <div
+        ref={elementRef}
+        className={getComponentClasses(node, isSelected)}
+        style={{ 
+            width: node.style.width !== 'auto' ? node.style.width : undefined, 
+            height: node.style.height !== 'auto' ? node.style.height : undefined 
+        }}
+        onClick={(e) => { e.stopPropagation(); onSelect(node.id); }}
+        draggable={node.id !== 'root'}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragLeave={() => setDragPosition(null)}
+        onDrop={handleDrop}
+      >
+        {isSelected && ( <div className="absolute inset-0 ring-2 ring-blue-500 ring-offset-2 pointer-events-none z-20 rounded-[inherit]"></div> )}
+        
+        {isSelected && resizeFeedback && (
+            <div className="absolute bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded shadow-md z-[60] pointer-events-none whitespace-nowrap" style={{ bottom: '-30px', right: '0px' }}>
+                {Math.round(resizeFeedback.w)} x {Math.round(resizeFeedback.h)}
+            </div>
+        )}
+
+        {isSelected && node.id !== 'root' && (
+            <>
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-6 bg-white border border-blue-500 shadow-sm rounded-full cursor-ew-resize z-30 -mr-1.5" onMouseDown={(e) => handleResizeStart(e, 'right')} />
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-2.5 bg-white border border-blue-500 shadow-sm rounded-full cursor-ns-resize z-30 -mb-1.5" onMouseDown={(e) => handleResizeStart(e, 'bottom')} />
+                <div className="absolute bottom-0 right-0 w-3 h-3 bg-white border-2 border-blue-500 rounded-sm cursor-nwse-resize z-30 -mr-1.5 -mb-1.5" onMouseDown={(e) => handleResizeStart(e, 'corner')} />
+            </>
+        )}
+
+        {/* Drop Indicators with Margins (Preserved) */}
+        {dragPosition === 'top' && <div className="absolute top-0 left-2 right-2 h-1.5 bg-blue-500 z-50 pointer-events-none rounded-full shadow-sm mt-1" />}
+        {dragPosition === 'bottom' && <div className="absolute bottom-0 left-2 right-2 h-1.5 bg-blue-500 z-50 pointer-events-none rounded-full shadow-sm mb-1" />}
+        {dragPosition === 'inside' && <div className="absolute inset-2 border-2 border-blue-500 bg-blue-500/10 z-50 pointer-events-none rounded-[inherit]" />}
+
+        {renderContent()}
+        
+        {node.children.map((child, i) => (
+          <CanvasRenderer
+            key={child.id}
+            node={child}
+            selectedId={selectedId}
+            onSelect={onSelect}
+            onDrop={onDrop}
+            onDelete={onDelete}
+            onResize={onResize}
+            onUpdate={onUpdate}
+            onDuplicate={onDuplicate}
+            onWrap={onWrap}
+            index={i}
+            parentId={node.id}
+          />
+        ))}
+      </div>
+    </>
   );
-}
+});
 
 export default CanvasRenderer;

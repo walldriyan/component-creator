@@ -1,4 +1,4 @@
-export type ComponentType = 'container' | 'text' | 'button' | 'input' | 'card' | 'image' | 'icon';
+export type ComponentType = 'container' | 'text' | 'button' | 'input' | 'textarea' | 'checkbox' | 'switch' | 'select' | 'card' | 'image' | 'icon' | 'divider' | 'label';
 
 export type LibraryType = 'radix' | 'shadcn' | 'plain';
 
@@ -11,8 +11,8 @@ export interface StyleProps {
   width?: string;
   height?: string;
   minHeight?: string;
-  maxWidth?: string; // Added
-  minWidth?: string; // Added
+  maxWidth?: string;
+  minWidth?: string;
   borderRadius?: string;
   borderWidth?: string;
   borderColor?: string;
@@ -23,7 +23,7 @@ export interface StyleProps {
   justifyContent?: 'flex-start' | 'center' | 'flex-end' | 'space-between';
   alignItems?: 'flex-start' | 'center' | 'flex-end' | 'stretch';
   flexGrow?: number;
-  overflow?: 'visible' | 'hidden' | 'scroll' | 'auto'; // Added
+  overflow?: 'visible' | 'hidden' | 'scroll' | 'auto';
   gap?: string;
   fontSize?: string;
   fontWeight?: string;
@@ -60,13 +60,13 @@ export const initialCanvas: ComponentNode = {
   style: {
     width: '100%',
     height: '100%',
-    padding: '5px', // Updated default
+    padding: '20px', 
     backgroundColor: '#ffffff',
     flexDirection: 'column',
     alignItems: 'flex-start',
-    gap: '10px', // Updated default
+    gap: '20px', 
     justifyContent: 'flex-start',
-    overflow: 'hidden', // Added default
+    overflow: 'hidden',
   },
   children: [],
 };
