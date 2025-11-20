@@ -1,0 +1,5 @@
+{
+  "name": "Sinhala UI Builder Pro",
+  "description": "A React-based UI Builder capable of generating Next.js/Tailwind code with Radix/Shadcn styling support. Features drag-and-drop, extensive property customization, and Gemini AI-powered layout generation.",
+  "requestFramePermissions": []
+}
