@@ -84,7 +84,7 @@ const styleToTailwind = (style: StyleProps, type: string): string => {
   return classes.join(' ');
 };
 
-const collectImports = (node: ComponentNode, imports: Set<string>, components: Set<string>) => {
+const collectImports = (node: ComponentNode, imports: Set<string>, components: Set<string>, lucideIcons: Set<string>) => {
     if (node.href) imports.add('import Link from "next/link"');
 
     // Shadcn Imports
@@ -104,20 +104,32 @@ const collectImports = (node: ComponentNode, imports: Set<string>, components: S
         if (node.type === 'switch') imports.add('import * as Switch from "@radix-ui/react-switch"');
         if (node.type === 'checkbox') {
             imports.add('import * as Checkbox from "@radix-ui/react-checkbox"');
-            imports.add('import { Check } from "lucide-react"');
+            lucideIcons.add('Check');
         }
-        // Other Radix primitives are typically plain HTML with logic, but here we map what we use.
     }
     
-    // Table needs icons for pagination/search and potentially a Button if action is enabled
+    // Table Imports
     if (node.type === 'table') {
-        imports.add('import { Search, ChevronLeft, ChevronRight } from "lucide-react"');
-        if (node.props.actionLabel) {
-             if(node.library === 'shadcn') imports.add('import { Button } from "@/components/ui/button"');
+        lucideIcons.add('Search');
+        lucideIcons.add('ChevronLeft');
+        lucideIcons.add('ChevronRight');
+        
+        // Add icons used in custom columns
+        if (node.props.customColumns) {
+            node.props.customColumns.forEach((col: any) => {
+                if (col.type === 'icon' && col.content) {
+                    lucideIcons.add(col.content);
+                }
+            });
         }
     }
+    
+    // General Icon collection
+    if (node.type === 'icon' && node.iconName) {
+        lucideIcons.add(node.iconName);
+    }
 
-    node.children.forEach(child => collectImports(child, imports, components));
+    node.children.forEach(child => collectImports(child, imports, components, lucideIcons));
 };
 
 const hasTable = (node: ComponentNode): boolean => {
@@ -144,9 +156,11 @@ const generateNode = (node: ComponentNode, indent: number = 0): string => {
       const headers = node.props.data && node.props.data.length > 0 ? Object.keys(node.props.data[0]) : [];
       const actionLabel = node.props.actionLabel;
       const actionFunc = node.props.actionFunction || 'handleAction';
+      const customColumns = node.props.customColumns || [];
       
-      // Action Button JSX
-      const actionButton = actionLabel 
+      // Legacy Action JSX
+      const legacyActionHeader = actionLabel ? `<th className="px-4 py-3 font-semibold text-right">Action</th>` : '';
+      const legacyActionButton = actionLabel 
         ? `<td className="px-4 py-3 text-right">
 ${spaces}             <button 
 ${spaces}                 onClick={(e) => { e.stopPropagation(); ${actionFunc}(row); }}
@@ -157,7 +171,32 @@ ${spaces}             </button>
 ${spaces}          </td>`
         : '';
 
-      const actionHeader = actionLabel ? `<th className="px-4 py-3 font-semibold text-right">Action</th>` : '';
+      // Custom Columns Headers JSX
+      const customHeaders = customColumns.map((c: any) => `<th className="px-4 py-3 font-semibold text-center">${c.header}</th>`).join(`\n${spaces}          `);
+
+      // Custom Columns Cell JSX
+      const customCells = customColumns.map((c: any) => {
+          if (c.type === 'button') {
+              return `<td className="px-4 py-3 text-center">
+${spaces}             <button onClick={() => ${c.actionFunction}(row)} className="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors">${c.content || 'Action'}</button>
+${spaces}           </td>`;
+          }
+          if (c.type === 'icon') {
+              return `<td className="px-4 py-3 text-center">
+${spaces}             <button onClick={() => ${c.actionFunction}(row)} className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors" title="${c.content}">
+${spaces}               <${c.content || 'Star'} size={16} />
+${spaces}             </button>
+${spaces}           </td>`;
+          }
+          if (c.type === 'image') {
+              return `<td className="px-4 py-3 text-center">
+${spaces}             <div className="flex justify-center"><img src="${c.content}" alt="img" className="w-8 h-8 rounded object-cover border border-gray-200" /></div>
+${spaces}           </td>`;
+          }
+          return `<td className="px-4 py-3 text-center"><span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-medium">${c.content || 'Label'}</span></td>`;
+      }).join(`\n${spaces}            `);
+
+      const totalCols = headers.length + (actionLabel ? 1 : 0) + customColumns.length;
 
       return `
 ${spaces}<div ${classNameProp}>
@@ -178,7 +217,8 @@ ${spaces}        <tr>
 ${spaces}          {${JSON.stringify(headers)}.map(h => (
 ${spaces}             <th key={h} className="px-4 py-3 font-semibold">{h}</th>
 ${spaces}          ))}
-${spaces}          ${actionHeader}
+${spaces}          ${legacyActionHeader}
+${spaces}          ${customHeaders}
 ${spaces}        </tr>
 ${spaces}      </thead>
 ${spaces}      <tbody>
@@ -187,10 +227,11 @@ ${spaces}          <tr key={i} className="border-b last:border-0 even:bg-slate-5
 ${spaces}            {${JSON.stringify(headers)}.map(h => (
 ${spaces}               <td key={h} className="px-4 py-3 text-gray-600">{row[h]}</td>
 ${spaces}            ))}
-${spaces}            ${actionButton}
+${spaces}            ${legacyActionButton}
+${spaces}            ${customCells}
 ${spaces}          </tr>
 ${spaces}        )) : (
-${spaces}          <tr><td colSpan={${headers.length + (actionLabel ? 1 : 0)}} className="text-center py-4 text-gray-500">No records</td></tr>
+${spaces}          <tr><td colSpan={${totalCols}} className="text-center py-4 text-gray-500">No records</td></tr>
 ${spaces}        )}
 ${spaces}      </tbody>
 ${spaces}    </table>
@@ -228,8 +269,7 @@ ${spaces}</div>`;
       }
   }
 
-  // --- Radix Library (and Fallbacks) ---
-  // Radix primitives often require detailed composition. We generate the structure.
+  // --- Radix Library ---
   if (node.library === 'radix') {
       if (node.type === 'switch') {
           return `${spaces}<div className="flex items-center gap-2">\n${spaces}  <Switch.Root className="${twClasses} w-[42px] h-[25px] bg-black/50 rounded-full relative shadow-sm data-[state=checked]:bg-black outline-none cursor-default" ${node.props.checked ? 'defaultChecked' : ''} id="${node.id}"${eventProps}>\n${spaces}    <Switch.Thumb className="block w-[21px] h-[21px] bg-white rounded-full shadow-sm transition-transform duration-100 translate-x-0.5 will-change-transform data-[state=checked]:translate-x-[19px]" />\n${spaces}  </Switch.Root>\n${spaces}  <label className="text-sm" htmlFor="${node.id}">${node.content}</label>\n${spaces}</div>`;
@@ -237,7 +277,6 @@ ${spaces}</div>`;
       if (node.type === 'checkbox') {
           return `${spaces}<div className="flex items-center gap-2">\n${spaces}  <Checkbox.Root className="${twClasses} flex h-[25px] w-[25px] appearance-none items-center justify-center rounded-[4px] bg-white shadow-[0_2px_10px] shadow-black/10 outline-none focus:shadow-[0_0_0_2px_black]" ${node.props.checked ? 'defaultChecked' : ''} id="${node.id}"${eventProps}>\n${spaces}    <Checkbox.Indicator className="text-black">\n${spaces}      <Check size={16} />\n${spaces}    </Checkbox.Indicator>\n${spaces}  </Checkbox.Root>\n${spaces}  <label className="text-sm" htmlFor="${node.id}">${node.content}</label>\n${spaces}</div>`;
       }
-      // Radix doesn't have primitives for basic HTML elements like Button/Input/Div, so we use standard HTML + Tailwind
   }
 
   // --- Standard HTML / Common ---
@@ -270,14 +309,8 @@ export const generateFullCode = (root: ComponentNode) => {
       imports.add('import { useState, useMemo } from "react"');
   }
 
-  collectImports(root, imports, components);
+  collectImports(root, imports, components, lucideIcons);
   
-  const gatherIcons = (n: ComponentNode) => {
-      if(n.type === 'icon' && n.iconName) lucideIcons.add(n.iconName);
-      n.children.forEach(gatherIcons);
-  }
-  gatherIcons(root);
-
   let importBlock = Array.from(imports).join('\n') + '\n';
   if (lucideIcons.size > 0) {
       importBlock += `import { ${Array.from(lucideIcons).join(', ')} } from 'lucide-react';\n`;
@@ -287,17 +320,26 @@ export const generateFullCode = (root: ComponentNode) => {
   let componentLogic = '';
   
   if (useTable) {
-      const findTableData = (n: ComponentNode): {data: any, func: string} | null => {
-          if (n.type === 'table') return { data: n.props.data, func: n.props.actionFunction || 'handleAction' };
+      const findTableData = (n: ComponentNode): any | null => {
+          if (n.type === 'table') return n;
           for (const c of n.children) {
               const d = findTableData(c);
               if (d) return d;
           }
           return null;
       }
-      const found = findTableData(root);
-      const tableData = found?.data || [];
-      const actionFunc = found?.func || 'handleAction';
+      const tableNode = findTableData(root);
+      const tableData = tableNode?.props?.data || [];
+      const actionFunc = tableNode?.props?.actionFunction || 'handleAction';
+      const customCols = tableNode?.props?.customColumns || [];
+      
+      // Generate handler functions for custom columns
+      const customHandlers = customCols.map((c: any) => {
+          if (c.actionFunction) {
+              return `const ${c.actionFunction} = (row: any) => {\n    console.log("${c.header} clicked", row);\n    alert("${c.header}: " + row.name);\n  };`;
+          }
+          return '';
+      }).join('\n  ');
       
       componentLogic = `
   const tableData = ${JSON.stringify(tableData, null, 2)};
@@ -321,6 +363,8 @@ export const generateFullCode = (root: ComponentNode) => {
      console.log("Row action clicked", row);
      alert(JSON.stringify(row, null, 2));
   };
+
+  ${customHandlers}
       `;
   }
 

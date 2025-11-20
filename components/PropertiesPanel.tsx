@@ -1,7 +1,7 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { ComponentNode, LibraryType } from '../types';
-import { Settings2, Layout, Palette, Square, Star, Ban, MousePointerClick, Move, Code, TableProperties, MousePointer2 } from 'lucide-react';
+import { Settings2, Layout, Palette, Square, Star, Ban, MousePointerClick, Move, Code, TableProperties, MousePointer2, Plus, Trash2, Image as ImageIcon, Type } from 'lucide-react';
 
 interface PropertiesPanelProps {
   node: ComponentNode | null;
@@ -10,6 +10,12 @@ interface PropertiesPanelProps {
 }
 
 export default function PropertiesPanel({ node, onChange, onStyleChange }: PropertiesPanelProps) {
+  // Local state for adding new table column
+  const [newColType, setNewColType] = useState('button');
+  const [newColHeader, setNewColHeader] = useState('');
+  const [newColContent, setNewColContent] = useState('');
+  const [newColFunc, setNewColFunc] = useState('');
+
   if (!node) {
     return (
       <div className="w-80 bg-white border-l border-gray-200 h-full flex flex-col items-center justify-center text-gray-400 p-6 text-center">
@@ -27,8 +33,31 @@ export default function PropertiesPanel({ node, onChange, onStyleChange }: Prope
           const parsed = JSON.parse(value);
           onChange({ props: { ...node.props, data: parsed } });
       } catch (e) {
-          // Allow user to type invalid JSON while editing, maybe show error in future
+          // Allow user to type invalid JSON while editing
       }
+  };
+
+  const addCustomColumn = () => {
+      if (!newColHeader) return;
+      const newCol = {
+          id: Date.now().toString(),
+          type: newColType,
+          header: newColHeader,
+          content: newColContent,
+          actionFunction: newColFunc || `handle${newColHeader.replace(/\s+/g, '')}`
+      };
+      const existingCols = node.props.customColumns || [];
+      onChange({ props: { ...node.props, customColumns: [...existingCols, newCol] } });
+      
+      // Reset form
+      setNewColHeader('');
+      setNewColContent('');
+      setNewColFunc('');
+  };
+
+  const removeCustomColumn = (id: string) => {
+      const existingCols = node.props.customColumns || [];
+      onChange({ props: { ...node.props, customColumns: existingCols.filter((c: any) => c.id !== id) } });
   };
 
   return (
@@ -112,31 +141,71 @@ export default function PropertiesPanel({ node, onChange, onStyleChange }: Prope
             </section>
             
             <section>
-                <h3 className={sectionHeaderClass}><MousePointer2 size={14} /> Table Actions</h3>
-                <div className="space-y-4">
+                <h3 className={sectionHeaderClass}><MousePointer2 size={14} /> Custom Actions / Columns</h3>
+                
+                {/* List Existing Custom Columns */}
+                <div className="space-y-2 mb-4">
+                    {node.props.customColumns?.map((col: any) => (
+                        <div key={col.id} className="flex items-center justify-between p-2 bg-slate-50 border border-gray-200 rounded text-xs">
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold text-gray-600">{col.header}</span>
+                                <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] uppercase">{col.type}</span>
+                            </div>
+                            <button onClick={() => removeCustomColumn(col.id)} className="text-red-400 hover:text-red-600">
+                                <Trash2 size={14} />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Add New Column Form */}
+                <div className="bg-slate-50 p-3 rounded border border-slate-200 space-y-3">
+                    <h4 className="text-xs font-bold text-gray-500">Add New Column</h4>
                     <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1.5">Action Button Label</label>
-                        <input 
-                            type="text" 
-                            className={inputClass} 
-                            placeholder="e.g., Edit, View"
-                            value={node.props.actionLabel || ''} 
-                            onChange={(e) => onChange({ props: { ...node.props, actionLabel: e.target.value } })} 
-                        />
-                        <p className="text-[10px] text-gray-400 mt-1">Leave empty to hide the action column.</p>
+                        <label className="block text-[10px] text-gray-500 mb-1">Type</label>
+                        <div className="flex gap-1">
+                            <button onClick={() => setNewColType('button')} className={`flex-1 py-1 text-[10px] border rounded ${newColType === 'button' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-gray-200 text-gray-600'}`}>Button</button>
+                            <button onClick={() => setNewColType('icon')} className={`flex-1 py-1 text-[10px] border rounded ${newColType === 'icon' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-gray-200 text-gray-600'}`}>Icon</button>
+                            <button onClick={() => setNewColType('image')} className={`flex-1 py-1 text-[10px] border rounded ${newColType === 'image' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-gray-200 text-gray-600'}`}>Image</button>
+                             <button onClick={() => setNewColType('text')} className={`flex-1 py-1 text-[10px] border rounded ${newColType === 'text' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-gray-200 text-gray-600'}`}>Label</button>
+                        </div>
                     </div>
-                    {node.props.actionLabel && (
-                         <div>
-                            <label className="block text-xs font-medium text-gray-500 mb-1.5">Function Name</label>
+                    <div className="grid grid-cols-2 gap-2">
+                        <div>
+                            <label className="block text-[10px] text-gray-500 mb-1">Header Title</label>
+                            <input type="text" className="w-full text-xs border rounded p-1.5" placeholder="e.g. Edit" value={newColHeader} onChange={e => setNewColHeader(e.target.value)} />
+                        </div>
+                        <div>
+                             <label className="block text-[10px] text-gray-500 mb-1">{newColType === 'icon' ? 'Icon Name' : newColType === 'image' ? 'Image URL' : 'Label/Text'}</label>
+                             <input type="text" className="w-full text-xs border rounded p-1.5" placeholder={newColType === 'icon' ? 'Edit' : 'Click me'} value={newColContent} onChange={e => setNewColContent(e.target.value)} />
+                        </div>
+                    </div>
+                    {(newColType === 'button' || newColType === 'icon') && (
+                        <div>
+                            <label className="block text-[10px] text-gray-500 mb-1">Function Name</label>
+                            <input type="text" className="w-full text-xs border rounded p-1.5" placeholder="e.g. handleEdit" value={newColFunc} onChange={e => setNewColFunc(e.target.value)} />
+                        </div>
+                    )}
+                    <button onClick={addCustomColumn} className="w-full py-1.5 bg-slate-800 text-white text-xs rounded hover:bg-slate-700 flex items-center justify-center gap-1">
+                        <Plus size={12} /> Add Column
+                    </button>
+                </div>
+
+                {/* Deprecated/Legacy Single Action Support (kept for backward compatibility) */}
+                <div className="mt-6 pt-4 border-t border-gray-200 opacity-60 hover:opacity-100 transition-opacity">
+                    <h4 className="text-[10px] font-bold text-gray-400 uppercase mb-2">Legacy Action (Single)</h4>
+                    <div className="space-y-2">
+                        <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1.5">Action Button Label</label>
                             <input 
                                 type="text" 
                                 className={inputClass} 
-                                placeholder="handleRowClick"
-                                value={node.props.actionFunction || 'handleAction'} 
-                                onChange={(e) => onChange({ props: { ...node.props, actionFunction: e.target.value } })} 
+                                placeholder="e.g., Edit, View"
+                                value={node.props.actionLabel || ''} 
+                                onChange={(e) => onChange({ props: { ...node.props, actionLabel: e.target.value } })} 
                             />
                         </div>
-                    )}
+                    </div>
                 </div>
             </section>
             </>

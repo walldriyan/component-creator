@@ -1,7 +1,7 @@
 
 import React, { MouseEvent, useRef, useState, useLayoutEffect, useEffect, useMemo } from 'react';
 import { ComponentNode } from '../types';
-import { Settings, Home, User, Bell, Search, Menu, Star, Heart, Share, ArrowRight, Box, Check, X, Layout, Maximize2, Scaling, Copy, CreditCard, Link as LinkIcon, Image as ImageIcon, Square, Minimize2, MoveHorizontal, MoveVertical, ChevronDown, ArrowUp, ArrowDown, AlignCenter, AlignLeft, ArrowRightFromLine, ArrowDownFromLine, Trash2, Minimize, Maximize, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Settings, Home, User, Bell, Search, Menu, Star, Heart, Share, ArrowRight, Box, Check, X, Layout, Maximize2, Scaling, Copy, CreditCard, Link as LinkIcon, Image as ImageIcon, Square, Minimize2, MoveHorizontal, MoveVertical, ChevronDown, ArrowUp, ArrowDown, AlignCenter, AlignLeft, ArrowRightFromLine, ArrowDownFromLine, Trash2, Minimize, Maximize, ChevronLeft, ChevronRight, Edit, Eye, MoreHorizontal, Plus, Download, Upload } from 'lucide-react';
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -9,8 +9,10 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// Expanded Icon Map for more options
 const IconMap: Record<string, any> = {
-  Home, User, Settings, Bell, Search, Menu, Star, Heart, Share, ArrowRight, Box, Check, X, Layout
+  Home, User, Settings, Bell, Search, Menu, Star, Heart, Share, ArrowRight, Box, Check, X, Layout,
+  Edit, Eye, Trash2, MoreHorizontal, Plus, Download, Upload, ChevronRight, ChevronLeft
 };
 
 interface CanvasProps {
@@ -127,7 +129,9 @@ const TableRenderer = ({ node }: { node: ComponentNode }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
+    
     const actionLabel = node.props.actionLabel;
+    const customColumns = node.props.customColumns || [];
 
     // Reset pagination if data changes
     useEffect(() => setCurrentPage(1), [data.length]);
@@ -144,10 +148,8 @@ const TableRenderer = ({ node }: { node: ComponentNode }) => {
     const totalPages = Math.ceil(filteredData.length / itemsPerPage);
     const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-    const handleActionClick = (row: any) => {
-        // In builder, we just show an alert to prove it works.
-        // In generated code, this will be a real function call.
-        alert(`Row Action Triggered!\n\nFunction: ${node.props.actionFunction || 'handleAction'}\nData: ${JSON.stringify(row, null, 2)}`);
+    const handleActionClick = (funcName: string, row: any) => {
+        alert(`Action Triggered!\n\nFunction: ${funcName}\nData: ${JSON.stringify(row, null, 2)}`);
     };
 
     if (data.length === 0) return <div className="p-4 text-center text-gray-400">No data found in props.data</div>;
@@ -176,7 +178,13 @@ const TableRenderer = ({ node }: { node: ComponentNode }) => {
                             {headers.map(h => (
                                 <th key={h} className="px-4 py-3 font-semibold">{h}</th>
                             ))}
+                            {/* Legacy Action Column */}
                             {actionLabel && <th className="px-4 py-3 font-semibold text-right">Action</th>}
+                            
+                            {/* Dynamic Custom Columns */}
+                            {customColumns.map((col: any) => (
+                                <th key={col.id} className="px-4 py-3 font-semibold text-center">{col.header}</th>
+                            ))}
                         </tr>
                     </thead>
                     <tbody>
@@ -185,20 +193,55 @@ const TableRenderer = ({ node }: { node: ComponentNode }) => {
                                 {headers.map(h => (
                                     <td key={h} className="px-4 py-3 text-gray-600">{String((row as any)[h])}</td>
                                 ))}
+                                
+                                {/* Legacy Action Button */}
                                 {actionLabel && (
                                     <td className="px-4 py-3 text-right">
                                         <button 
-                                            onClick={(e) => { e.stopPropagation(); handleActionClick(row); }}
+                                            onClick={(e) => { e.stopPropagation(); handleActionClick(node.props.actionFunction || 'handleAction', row); }}
                                             className="px-3 py-1.5 text-xs font-medium text-white bg-slate-800 rounded hover:bg-slate-700 transition-colors"
                                         >
                                             {actionLabel}
                                         </button>
                                     </td>
                                 )}
+
+                                {/* Dynamic Custom Columns Logic */}
+                                {customColumns.map((col: any) => (
+                                    <td key={col.id} className="px-4 py-3 text-center">
+                                        {col.type === 'button' && (
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); handleActionClick(col.actionFunction, row); }}
+                                                className="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors"
+                                            >
+                                                {col.content || 'Action'}
+                                            </button>
+                                        )}
+                                        {col.type === 'icon' && (
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); handleActionClick(col.actionFunction, row); }}
+                                                className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                                                title={col.content || 'Action'}
+                                            >
+                                                {React.createElement(IconMap[col.content] || Star, { size: 16 })}
+                                            </button>
+                                        )}
+                                        {col.type === 'image' && (
+                                            <div className="flex justify-center">
+                                                <img src={col.content || "https://picsum.photos/30"} alt="img" className="w-8 h-8 rounded object-cover border border-gray-200" />
+                                            </div>
+                                        )}
+                                        {col.type === 'text' && (
+                                            <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-medium">
+                                                {col.content || 'Label'}
+                                            </span>
+                                        )}
+                                    </td>
+                                ))}
                             </tr>
                         )) : (
                             <tr>
-                                <td colSpan={headers.length + (actionLabel ? 1 : 0)} className="text-center py-4 text-gray-500">No matching records found</td>
+                                <td colSpan={headers.length + (actionLabel ? 1 : 0) + customColumns.length} className="text-center py-4 text-gray-500">No matching records found</td>
                             </tr>
                         )}
                     </tbody>
