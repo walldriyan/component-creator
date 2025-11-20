@@ -91,6 +91,29 @@ export default function PropertiesPanel({ node, onChange, onStyleChange }: Prope
                     </div>
                 </div>
                 
+                {/* New Min/Max Width Controls */}
+                <div className="grid grid-cols-2 gap-3">
+                    <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1.5">Min Width</label>
+                        <input type="text" className={inputClass} placeholder="0px" value={node.style.minWidth || ''} onChange={(e) => onStyleChange({ minWidth: e.target.value })} />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1.5">Max Width</label>
+                        <input type="text" className={inputClass} placeholder="none" value={node.style.maxWidth || ''} onChange={(e) => onStyleChange({ maxWidth: e.target.value })} />
+                    </div>
+                </div>
+
+                {/* New Overflow Control */}
+                 <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Overflow</label>
+                    <select className={inputClass} value={node.style.overflow || 'hidden'} onChange={(e) => onStyleChange({ overflow: e.target.value })}>
+                        <option value="visible">Visible</option>
+                        <option value="hidden">Hidden</option>
+                        <option value="scroll">Scroll</option>
+                        <option value="auto">Auto</option>
+                    </select>
+                 </div>
+
                 <div>
                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Flex Direction</label>
                    <div className="flex bg-gray-50 p-1 rounded-lg border border-gray-100">
@@ -102,11 +125,11 @@ export default function PropertiesPanel({ node, onChange, onStyleChange }: Prope
                  <div className="grid grid-cols-2 gap-3">
                     <div>
                         <label className="block text-xs font-medium text-gray-500 mb-1.5">Padding</label>
-                        <input type="text" className={inputClass} placeholder="0px" value={node.style.padding || ''} onChange={(e) => onStyleChange({ padding: e.target.value })} />
+                        <input type="text" className={inputClass} placeholder="5px" value={node.style.padding || ''} onChange={(e) => onStyleChange({ padding: e.target.value })} />
                     </div>
                     <div>
                         <label className="block text-xs font-medium text-gray-500 mb-1.5">Gap</label>
-                        <input type="text" className={inputClass} placeholder="0px" value={node.style.gap || ''} onChange={(e) => onStyleChange({ gap: e.target.value })} />
+                        <input type="text" className={inputClass} placeholder="10px" value={node.style.gap || ''} onChange={(e) => onStyleChange({ gap: e.target.value })} />
                     </div>
                 </div>
 

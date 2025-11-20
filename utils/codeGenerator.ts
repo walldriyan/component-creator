@@ -63,6 +63,11 @@ const styleToTailwind = (style: StyleProps, type: string): string => {
 
   if (style.minHeight) classes.push(`min-h-[${style.minHeight}]`);
   
+  // New props
+  if (style.maxWidth) classes.push(`max-w-[${style.maxWidth}]`);
+  if (style.minWidth) classes.push(`min-w-[${style.minWidth}]`);
+  if (style.overflow) classes.push(`overflow-${style.overflow}`);
+  
   // Effects & Typography
   if (style.boxShadow) classes.push('shadow-md');
   if (style.fontSize) classes.push(`text-[${style.fontSize}]`);

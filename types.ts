@@ -11,6 +11,8 @@ export interface StyleProps {
   width?: string;
   height?: string;
   minHeight?: string;
+  maxWidth?: string; // Added
+  minWidth?: string; // Added
   borderRadius?: string;
   borderWidth?: string;
   borderColor?: string;
@@ -20,7 +22,8 @@ export interface StyleProps {
   flexDirection?: 'row' | 'column';
   justifyContent?: 'flex-start' | 'center' | 'flex-end' | 'space-between';
   alignItems?: 'flex-start' | 'center' | 'flex-end' | 'stretch';
-  flexGrow?: number; // Added for Flex Grow feature
+  flexGrow?: number;
+  overflow?: 'visible' | 'hidden' | 'scroll' | 'auto'; // Added
   gap?: string;
   fontSize?: string;
   fontWeight?: string;
@@ -32,18 +35,18 @@ export interface ComponentNode {
   id: string;
   type: ComponentType;
   name: string;
-  library: LibraryType; // Radix (simulated) vs Shadcn
+  library: LibraryType;
   props: Record<string, any>;
   style: StyleProps;
-  content?: string; // For text nodes
-  iconName?: string; // For icons (e.g., "Home", "User")
-  href?: string; // For Next.js Link
+  content?: string;
+  iconName?: string;
+  href?: string;
   children: ComponentNode[];
   parentId?: string | null;
 }
 
 export interface DragItem {
-  type: ComponentType | 'sidebar' | 'navbar'; // Extended for presets
+  type: ComponentType | 'sidebar' | 'navbar';
   library: LibraryType;
 }
 
@@ -52,17 +55,18 @@ export const initialCanvas: ComponentNode = {
   id: 'root',
   type: 'container',
   name: 'Root Page',
-  library: 'shadcn', // Changed default to shadcn
+  library: 'shadcn',
   props: {},
   style: {
     width: '100%',
     height: '100%',
-    padding: '24px',
+    padding: '5px', // Updated default
     backgroundColor: '#ffffff',
     flexDirection: 'column',
     alignItems: 'flex-start',
-    gap: '16px',
+    gap: '10px', // Updated default
     justifyContent: 'flex-start',
+    overflow: 'hidden', // Added default
   },
   children: [],
 };

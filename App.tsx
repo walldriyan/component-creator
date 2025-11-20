@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import ComponentLibrary from './components/ComponentLibrary';
 import CanvasRenderer from './components/Canvas';
 import PropertiesPanel from './components/PropertiesPanel';
@@ -51,26 +51,37 @@ export default function App() {
   // Generate ID
   const genId = () => `comp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
 
+  // Deep Clone Node
+  const cloneNode = (node: ComponentNode, newParentId: string | null): ComponentNode => {
+      const newId = genId();
+      return {
+          ...node,
+          id: newId,
+          parentId: newParentId,
+          children: node.children.map(child => cloneNode(child, newId))
+      };
+  };
+
   // Create New Node Object
   const createNewNode = (type: string, parentId: string): ComponentNode => {
       // --- PRESETS ---
       if (type === 'sidebar') {
           const menuItemStyle: StyleProps = { 
-            width: '100%', justifyContent: 'flex-start', gap: '12px', flexDirection: 'row', alignItems: 'center', padding: '10px',
+            width: '100%', justifyContent: 'flex-start', gap: '12px', flexDirection: 'row', alignItems: 'center', padding: '5px', overflow: 'hidden'
           };
           return {
               id: genId(), type: 'container', name: 'Sidebar', library: 'shadcn', props: {},
-              style: { width: '260px', height: '100%', backgroundColor: '#ffffff', flexDirection: 'column', padding: '20px', borderRight: '1px solid #e2e8f0', gap: '8px' },
+              style: { width: '260px', height: '100%', backgroundColor: '#ffffff', flexDirection: 'column', padding: '20px', borderRight: '1px solid #e2e8f0', gap: '8px', overflow: 'hidden' },
               children: [
-                  { id: genId(), type: 'text', name: 'Brand', library: 'shadcn', props: {}, content: 'Dashboard Pro', style: { fontSize: '20px', fontWeight: 'bold', color: '#0f172a', marginBottom: '24px' }, children: [] },
+                  { id: genId(), type: 'text', name: 'Brand', library: 'shadcn', props: {}, content: 'Dashboard Pro', style: { fontSize: '20px', fontWeight: 'bold', color: '#0f172a', marginBottom: '24px', padding: '5px', gap: '10px', overflow: 'hidden' }, children: [] },
                   { id: genId(), type: 'button', name: 'Menu Item', library: 'shadcn', props: { variant: 'secondary' }, style: { ...menuItemStyle, backgroundColor: '#f1f5f9', color: '#0f172a' }, children: [
-                       { id: genId(), type: 'icon', name: 'Home Icon', library: 'shadcn', props: {}, iconName: 'Home', style: { color: 'inherit' }, children: [] },
-                       { id: genId(), type: 'text', name: 'Label', library: 'shadcn', props: {}, content: 'Home', style: { color: 'inherit', fontWeight: '500' }, children: [] }
+                       { id: genId(), type: 'icon', name: 'Home Icon', library: 'shadcn', props: {}, iconName: 'Home', style: { color: 'inherit', padding: '5px', gap: '10px', overflow: 'hidden' }, children: [] },
+                       { id: genId(), type: 'text', name: 'Label', library: 'shadcn', props: {}, content: 'Home', style: { color: 'inherit', fontWeight: '500', padding: '5px', gap: '10px', overflow: 'hidden' }, children: [] }
                     ]
                   },
                   { id: genId(), type: 'button', name: 'Menu Item', library: 'shadcn', props: { variant: 'ghost' }, style: { ...menuItemStyle, color: '#64748b' }, children: [
-                       { id: genId(), type: 'icon', name: 'Chart Icon', library: 'shadcn', props: {}, iconName: 'Layout', style: { color: 'inherit' }, children: [] },
-                       { id: genId(), type: 'text', name: 'Label', library: 'shadcn', props: {}, content: 'Analytics', style: { color: 'inherit' }, children: [] }
+                       { id: genId(), type: 'icon', name: 'Chart Icon', library: 'shadcn', props: {}, iconName: 'Layout', style: { color: 'inherit', padding: '5px', gap: '10px', overflow: 'hidden' }, children: [] },
+                       { id: genId(), type: 'text', name: 'Label', library: 'shadcn', props: {}, content: 'Analytics', style: { color: 'inherit', padding: '5px', gap: '10px', overflow: 'hidden' }, children: [] }
                     ]
                   },
               ],
@@ -79,15 +90,15 @@ export default function App() {
       } else if (type === 'navbar') {
           return {
               id: genId(), type: 'container', name: 'Navbar', library: 'shadcn', props: {},
-              style: { width: '100%', height: '64px', backgroundColor: '#ffffff', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', borderBottom: '1px solid #e2e8f0', gap: '20px' },
+              style: { width: '100%', height: '64px', backgroundColor: '#ffffff', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', borderBottom: '1px solid #e2e8f0', gap: '20px', overflow: 'hidden' },
               children: [
-                  { id: genId(), type: 'text', name: 'Logo', library: 'shadcn', props: {}, content: 'My App', style: { fontSize: '18px', fontWeight: 'bold' }, children: [] },
-                  { id: genId(), type: 'container', name: 'Links', library: 'plain', props: {}, style: { flexDirection: 'row', gap: '24px', alignItems: 'center' }, children: [
-                       { id: genId(), type: 'text', name: 'Link', library: 'shadcn', props: {}, content: 'Features', style: { color: '#64748b', fontSize: '14px' }, children: [] },
-                       { id: genId(), type: 'text', name: 'Link', library: 'shadcn', props: {}, content: 'Pricing', style: { color: '#64748b', fontSize: '14px' }, children: [] },
+                  { id: genId(), type: 'text', name: 'Logo', library: 'shadcn', props: {}, content: 'My App', style: { fontSize: '18px', fontWeight: 'bold', padding: '5px', gap: '10px', overflow: 'hidden' }, children: [] },
+                  { id: genId(), type: 'container', name: 'Links', library: 'plain', props: {}, style: { flexDirection: 'row', gap: '24px', alignItems: 'center', padding: '5px', overflow: 'hidden' }, children: [
+                       { id: genId(), type: 'text', name: 'Link', library: 'shadcn', props: {}, content: 'Features', style: { color: '#64748b', fontSize: '14px', padding: '5px', gap: '10px', overflow: 'hidden' }, children: [] },
+                       { id: genId(), type: 'text', name: 'Link', library: 'shadcn', props: {}, content: 'Pricing', style: { color: '#64748b', fontSize: '14px', padding: '5px', gap: '10px', overflow: 'hidden' }, children: [] },
                     ]
                   },
-                  { id: genId(), type: 'button', name: 'Login', library: 'shadcn', props: {}, content: 'Sign In', style: { backgroundColor: '#0f172a', color: '#fff' }, children: [] }
+                  { id: genId(), type: 'button', name: 'Login', library: 'shadcn', props: {}, content: 'Sign In', style: { backgroundColor: '#0f172a', color: '#fff', padding: '5px', gap: '10px', overflow: 'hidden' }, children: [] }
               ],
               parentId
           };
@@ -100,7 +111,11 @@ export default function App() {
         library: 'shadcn', 
         props: {},
         style: {
-            padding: type === 'button' ? undefined : '16px',
+            // Global Defaults as requested
+            padding: '5px', 
+            gap: '10px',
+            overflow: 'hidden',
+            
             backgroundColor: (type === 'container' || type === 'card') ? '#ffffff' : undefined,
             minHeight: (type === 'container' || type === 'card') ? '100px' : undefined,
             borderWidth: (type === 'container' || type === 'card') ? '1px' : undefined,
@@ -120,26 +135,21 @@ export default function App() {
     
     if (moveNodeId) {
         // MOVE EXISTING NODE
-        // Prevent dropping into itself
         if (moveNodeId === targetId) return;
 
         setRootNode(prev => {
-            // 1. Find the node to move
             const nodeToMove = findNode(prev, moveNodeId);
             if (!nodeToMove) return prev;
 
-            // 2. Remove it from its old parent
             const removeNode = (node: ComponentNode): ComponentNode => ({
                 ...node,
                 children: node.children.filter(c => c.id !== moveNodeId).map(removeNode)
             });
             const cleanTree = removeNode(prev);
 
-            // 3. Insert into new parent at specific index
             const insertNode = (node: ComponentNode): ComponentNode => {
                 if (node.id === targetId) {
                     const newChildren = [...node.children];
-                    // If index is provided, insert there, otherwise append
                     if (typeof index === 'number' && index >= 0) {
                         newChildren.splice(index, 0, { ...nodeToMove, parentId: targetId });
                     } else {
@@ -175,6 +185,8 @@ export default function App() {
   };
 
   const handleDelete = (id: string) => {
+    if (id === 'root') return;
+    
     const deleteFromNode = (node: ComponentNode, targetId: string): ComponentNode => {
       return {
         ...node,
@@ -183,6 +195,37 @@ export default function App() {
     };
     setRootNode(prev => deleteFromNode(prev, id));
     if (selectedId === id) setSelectedId(null);
+  };
+
+  const handleDuplicate = (id: string, direction: 'before' | 'after') => {
+      if (id === 'root') return;
+
+      setRootNode(prev => {
+          // Helper to find parent and duplicate child
+          const duplicateInTree = (node: ComponentNode): ComponentNode => {
+              // Check if any child matches the ID
+              const childIndex = node.children.findIndex(c => c.id === id);
+              
+              if (childIndex !== -1) {
+                  const childToClone = node.children[childIndex];
+                  const clonedNode = cloneNode(childToClone, node.id);
+                  
+                  const newChildren = [...node.children];
+                  const insertIndex = direction === 'after' ? childIndex + 1 : childIndex;
+                  
+                  newChildren.splice(insertIndex, 0, clonedNode);
+                  return { ...node, children: newChildren };
+              }
+              
+              // Recursively check children
+              return {
+                  ...node,
+                  children: node.children.map(duplicateInTree)
+              };
+          };
+
+          return duplicateInTree(prev);
+      });
   };
 
   const handleGenerate = async () => {
@@ -206,6 +249,24 @@ export default function App() {
   const handleUpdate = (id: string, updates: any) => {
       setRootNode(prev => updateNode(prev, id, updates));
   };
+
+  // Keyboard Event Listener for Delete
+  useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+          if (e.key === 'Delete' || e.key === 'Backspace') {
+              // Avoid deleting when typing in input fields
+              const activeTag = document.activeElement?.tagName;
+              if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return;
+
+              if (selectedId && selectedId !== 'root') {
+                  handleDelete(selectedId);
+              }
+          }
+      };
+
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedId]);
 
   return (
     <div className="flex h-screen flex-col bg-white text-slate-900 font-sans">
@@ -257,6 +318,7 @@ export default function App() {
                         onSelect={setSelectedId} 
                         onDrop={handleDrop}
                         onDelete={handleDelete}
+                        onDuplicate={handleDuplicate}
                         onResize={(id, style) => setRootNode(prev => updateNodeStyle(prev, id, style))}
                         onUpdate={handleUpdate}
                     />

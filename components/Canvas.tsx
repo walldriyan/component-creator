@@ -1,6 +1,7 @@
-import React, { MouseEvent, useRef, useState } from 'react';
+import React, { MouseEvent, useRef, useState, useEffect, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ComponentNode } from '../types';
-import { Trash2, Home, User, Settings, Bell, Search, Menu, Star, Heart, Share, ArrowRight, Box, Check, X, Layout, Maximize2, Minimize2, Link as LinkIcon, Image as ImageIcon, GripHorizontal, Square, Scaling } from 'lucide-react';
+import { Trash2, Home, User, Settings, Bell, Search, Menu, Star, Heart, Share, ArrowRight, Box, Check, X, Layout, Maximize2, Minimize2, Link as LinkIcon, Image as ImageIcon, GripHorizontal, Square, Scaling, Copy, CopyPlus } from 'lucide-react';
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -17,11 +18,12 @@ interface CanvasProps {
   node: ComponentNode;
   selectedId: string | null;
   onSelect: (id: string) => void;
-  onDrop: (e: React.DragEvent, targetId: string, index?: number) => void; // Updated to accept index
+  onDrop: (e: React.DragEvent, targetId: string, index?: number) => void;
   onDelete: (id: string) => void;
+  onDuplicate?: (id: string, direction: 'before' | 'after') => void;
   onResize: (id: string, style: any) => void;
   onUpdate?: (id: string, updates: Partial<ComponentNode> | any) => void;
-  index?: number; // Pass current index from parent
+  index?: number;
   parentId?: string | null;
 }
 
@@ -66,6 +68,11 @@ const getComponentClasses = (node: ComponentNode, isSelected: boolean) => {
     style.height === '100%' ? 'h-full' : style.height === 'auto' ? 'h-auto' : style.height ? `h-[${style.height}]` : '',
     style.minHeight ? `min-h-[${style.minHeight}]` : '',
     
+    // New Properties
+    style.maxWidth ? `max-w-[${style.maxWidth}]` : '',
+    style.minWidth ? `min-w-[${style.minWidth}]` : '',
+    style.overflow ? `overflow-${style.overflow}` : '',
+
     // Flex and Gap Logic
     (style.flexDirection || style.gap || style.justifyContent || style.alignItems) ? 'flex' : '',
     style.flexDirection === 'row' ? 'flex-row' : style.flexDirection === 'column' ? 'flex-col' : '',
@@ -82,10 +89,41 @@ const getComponentClasses = (node: ComponentNode, isSelected: boolean) => {
   return cn(base, selection, libStyles, dynamicStyles);
 };
 
-const CanvasRenderer: React.FC<CanvasProps> = ({ node, selectedId, onSelect, onDrop, onDelete, onResize, onUpdate, index = 0, parentId = null }) => {
+const CanvasRenderer: React.FC<CanvasProps> = ({ node, selectedId, onSelect, onDrop, onDelete, onResize, onUpdate, onDuplicate, index = 0, parentId = null }) => {
   const isSelected = selectedId === node.id;
   const elementRef = useRef<HTMLDivElement>(null);
   
+  // State to track menu position
+  const [menuPosition, setMenuPosition] = useState<{top: number, left: number, height: number} | null>(null);
+
+  // Update menu position when selected or scrolled/resized
+  useLayoutEffect(() => {
+      if (isSelected && elementRef.current) {
+          const updatePosition = () => {
+              if (elementRef.current) {
+                  const rect = elementRef.current.getBoundingClientRect();
+                  setMenuPosition({
+                      top: rect.top + window.scrollY,
+                      left: rect.left + window.scrollX,
+                      height: rect.height
+                  });
+              }
+          };
+          
+          updatePosition();
+          // Capture scroll events on window to handle any parent scrolling
+          window.addEventListener('scroll', updatePosition, true);
+          window.addEventListener('resize', updatePosition);
+          
+          return () => {
+              window.removeEventListener('scroll', updatePosition, true);
+              window.removeEventListener('resize', updatePosition);
+          };
+      } else {
+          setMenuPosition(null);
+      }
+  }, [isSelected, node, index]); // Recalculate on node updates
+
   // Drag Over State: 'top' | 'bottom' | 'inside' | null
   const [dragPosition, setDragPosition] = useState<'top' | 'bottom' | 'inside' | null>(null);
 
@@ -116,22 +154,15 @@ const CanvasRenderer: React.FC<CanvasProps> = ({ node, selectedId, onSelect, onD
 
     const rect = elementRef.current.getBoundingClientRect();
     const clientY = e.clientY;
-    const clientX = e.clientX;
     
     // Check if node is a container that accepts children "inside"
     const isContainer = node.type === 'container' || node.type === 'card' || (node.type === 'button' && node.children.length > 0);
     
-    // Logic to decide if we drop Inside, Above or Below
-    // If we are strictly hovering the edges, we might drop inside if it's empty
-    
-    // Simple vertical sort logic
     const height = rect.height;
     const relativeY = clientY - rect.top;
     
     // If it's a container and we are in the middle zone, drop inside (append)
     if (isContainer && relativeY > 10 && relativeY < height - 10) {
-        // But wait, if it has children, the children's dragOver will capture it. 
-        // So this only triggers if we are in the container's padding area.
         setDragPosition('inside');
         return;
     }
@@ -188,6 +219,16 @@ const CanvasRenderer: React.FC<CanvasProps> = ({ node, selectedId, onSelect, onD
       onDelete(node.id);
   }
 
+  const handleDuplicateBefore = (e: MouseEvent) => {
+      e.stopPropagation();
+      if (onDuplicate) onDuplicate(node.id, 'before');
+  }
+
+  const handleDuplicateAfter = (e: MouseEvent) => {
+      e.stopPropagation();
+      if (onDuplicate) onDuplicate(node.id, 'after');
+  }
+
   const handleResizeStart = (e: React.MouseEvent, direction: string) => {
     e.stopPropagation();
     e.preventDefault();
@@ -222,27 +263,48 @@ const CanvasRenderer: React.FC<CanvasProps> = ({ node, selectedId, onSelect, onD
 
   const classes = getComponentClasses(node, isSelected);
 
-  // Popup Menu Component
+  // Popup Menu Component (Using Portal)
   const renderPopupMenu = () => {
-      if (!isSelected || node.id === 'root') return null;
+      if (!isSelected || node.id === 'root' || !menuPosition) return null;
       
-      return (
-          <div className="absolute left-0 -top-12 h-10 bg-slate-800 text-white rounded-md shadow-xl flex items-center px-2 gap-1 z-[100] animate-in fade-in slide-in-from-bottom-2">
+      // Calculate positioning logic
+      let top = menuPosition.top - 48; // Default: 48px above the element
+      const left = menuPosition.left;
+
+      // If the element is too close to the top of the viewport/page, flip menu to the bottom
+      // We use a simple check against the viewport top
+      const viewportY = menuPosition.top - window.scrollY;
+      if (viewportY < 60) {
+          top = menuPosition.top + menuPosition.height + 10;
+      }
+
+      const menu = (
+          <div 
+            style={{ top: `${top}px`, left: `${left}px` }}
+            className="fixed h-10 bg-slate-800 text-white rounded-md shadow-xl flex items-center px-2 gap-1 z-[9999] animate-in fade-in zoom-in-95 duration-100"
+            onMouseDown={(e) => e.stopPropagation()} // Prevent selection loss
+          >
               <div className="flex items-center gap-1 pr-2 border-r border-slate-600">
                 <button onClick={toggleWidth} title="Toggle Width" className={cn("p-1.5 rounded hover:bg-slate-700", node.style.width === '100%' && "bg-blue-600")}><Maximize2 size={14} className="rotate-90" /></button>
                 <button onClick={toggleHeight} title="Toggle Height" className={cn("p-1.5 rounded hover:bg-slate-700", node.style.height === '100%' && "bg-blue-600")}><Maximize2 size={14} /></button>
                 <button onClick={toggleGrow} title="Toggle Flex Grow" className={cn("p-1.5 rounded hover:bg-slate-700", node.style.flexGrow === 1 && "bg-blue-600")}><Scaling size={14} /></button>
               </div>
-              <div className="flex items-center gap-1 px-1">
+              <div className="flex items-center gap-1 px-1 border-r border-slate-600 pr-2">
                  <button onClick={toggleBorder} title="Toggle Border" className={cn("p-1.5 rounded hover:bg-slate-700", node.style.borderWidth === '1px' && "bg-blue-600")}><Square size={14} /></button>
                  <button onClick={addLink} title="Link" className={cn("p-1.5 rounded hover:bg-slate-700", node.href && "text-green-400")}><LinkIcon size={14} /></button>
                  {node.type === 'image' && <button onClick={changeImage} className="p-1.5 rounded hover:bg-slate-700"><ImageIcon size={14} /></button>}
               </div>
-               <div className="flex items-center pl-2 border-l border-slate-600 ml-1">
+               <div className="flex items-center gap-1 px-1 border-r border-slate-600 pr-2">
+                 <button onClick={handleDuplicateBefore} title="Duplicate Before" className="p-1.5 rounded hover:bg-slate-700 text-slate-300"><Copy size={14} className="rotate-180"/></button>
+                 <button onClick={handleDuplicateAfter} title="Duplicate After" className="p-1.5 rounded hover:bg-slate-700 text-slate-300"><CopyPlus size={14} /></button>
+               </div>
+               <div className="flex items-center pl-1 ml-1">
                   <button onClick={handleDelete} className="p-1.5 rounded hover:bg-red-600 text-red-400 hover:text-white"><Trash2 size={14} /></button>
                </div>
           </div>
       );
+
+      return createPortal(menu, document.body);
   };
 
   const renderHandles = () => {
@@ -274,6 +336,8 @@ const CanvasRenderer: React.FC<CanvasProps> = ({ node, selectedId, onSelect, onD
 
   const structuralStyles = { 
       width: node.style.width, height: node.style.height,
+      maxWidth: node.style.maxWidth, minWidth: node.style.minWidth,
+      overflow: node.style.overflow as any,
       borderWidth: node.style.borderWidth, borderColor: node.style.borderColor, borderStyle: node.style.borderStyle as any,
       borderRight: node.style.borderRight, borderBottom: node.style.borderBottom, marginBottom: node.style.marginBottom,
       gap: node.style.gap, display: (node.style.flexDirection || node.style.gap || node.type === 'container' || node.type === 'button') ? 'flex' : undefined,
@@ -286,7 +350,7 @@ const CanvasRenderer: React.FC<CanvasProps> = ({ node, selectedId, onSelect, onD
     if (node.type === 'button') {
         if (node.children && node.children.length > 0) {
             return node.children.map((child, idx) => (
-                <CanvasRenderer key={child.id} node={child} selectedId={selectedId} onSelect={onSelect} onDrop={onDrop} onDelete={onDelete} onResize={onResize} onUpdate={onUpdate} index={idx} parentId={node.id} />
+                <CanvasRenderer key={child.id} node={child} selectedId={selectedId} onSelect={onSelect} onDrop={onDrop} onDelete={onDelete} onResize={onResize} onUpdate={onUpdate} onDuplicate={onDuplicate} index={idx} parentId={node.id} />
             ));
         }
         return node.content || 'Button';
@@ -299,7 +363,7 @@ const CanvasRenderer: React.FC<CanvasProps> = ({ node, selectedId, onSelect, onD
     }
     
     return node.children.map((child, idx) => (
-      <CanvasRenderer key={child.id} node={child} selectedId={selectedId} onSelect={onSelect} onDrop={onDrop} onDelete={onDelete} onResize={onResize} onUpdate={onUpdate} index={idx} parentId={node.id} />
+      <CanvasRenderer key={child.id} node={child} selectedId={selectedId} onSelect={onSelect} onDrop={onDrop} onDelete={onDelete} onResize={onResize} onUpdate={onUpdate} onDuplicate={onDuplicate} index={idx} parentId={node.id} />
     ));
   };
 
