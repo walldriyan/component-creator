@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { ComponentNode, LibraryType } from '../types';
-import { Settings2, Layout, Palette, Square, Star, Ban, MousePointerClick, Move, Code, TableProperties, MousePointer2, Plus, Trash2, Image as ImageIcon, Type, FileText, Server, Link as LinkIcon, CheckCircle } from 'lucide-react';
+import { Settings2, Layout, Palette, Square, Star, Ban, MousePointerClick, Move, Code, TableProperties, MousePointer2, Plus, Trash2, Image as ImageIcon, Type, FileText, Server, Link as LinkIcon, CheckCircle, Users, ThumbsUp } from 'lucide-react';
 
 interface PropertiesPanelProps {
   node: ComponentNode | null;
@@ -43,6 +43,15 @@ export default function PropertiesPanel({ node, onChange, onStyleChange }: Prope
       } catch (e) {
           // Allow user to type invalid JSON while editing
       }
+  };
+
+  const handleAvatarImagesChange = (value: string) => {
+     try {
+         const parsed = JSON.parse(value);
+         onChange({ props: { ...node.props, images: parsed } });
+     } catch (e) {
+         // Allow typing
+     }
   };
 
   const addCustomColumn = () => {
@@ -159,6 +168,56 @@ export default function PropertiesPanel({ node, onChange, onStyleChange }: Prope
              )}
            </div>
         </section>
+        
+        {/* Avatar Group Properties */}
+        {node.type === 'avatarGroup' && (
+            <section>
+                <h3 className={sectionHeaderClass}><Users size={14} /> Avatar Configuration</h3>
+                <div className="space-y-3">
+                    <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1.5">Max Display Count</label>
+                        <input 
+                            type="number" 
+                            className={inputClass} 
+                            value={node.props.max || 3} 
+                            onChange={(e) => onChange({ props: { ...node.props, max: parseInt(e.target.value) || 1 } })}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1.5">Images List (JSON Array)</label>
+                        <textarea 
+                            className={`${inputClass} font-mono text-xs h-28 resize-y`} 
+                            defaultValue={JSON.stringify(node.props.images || [], null, 2)}
+                            onBlur={(e) => handleAvatarImagesChange(e.target.value)}
+                            placeholder='["url1", "url2"]'
+                        />
+                    </div>
+                </div>
+            </section>
+        )}
+
+        {/* Interaction Properties */}
+        {node.type === 'interaction' && (
+            <section>
+                <h3 className={sectionHeaderClass}><ThumbsUp size={14} /> Interaction Data</h3>
+                <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                        <div>
+                             <label className="block text-[10px] font-medium text-gray-500 mb-1">Likes</label>
+                             <input type="number" className={inputClass} value={node.props.likes || 0} onChange={(e) => onChange({ props: { ...node.props, likes: parseInt(e.target.value) } })} />
+                        </div>
+                         <div>
+                             <label className="block text-[10px] font-medium text-gray-500 mb-1">Dislikes</label>
+                             <input type="number" className={inputClass} value={node.props.dislikes || 0} onChange={(e) => onChange({ props: { ...node.props, dislikes: parseInt(e.target.value) } })} />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1.5">Views</label>
+                        <input type="number" className={inputClass} value={node.props.views || 0} onChange={(e) => onChange({ props: { ...node.props, views: parseInt(e.target.value) } })} />
+                    </div>
+                </div>
+            </section>
+        )}
 
         {/* Form Builder Properties */}
         {node.type === 'form' && (

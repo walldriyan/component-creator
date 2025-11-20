@@ -254,6 +254,30 @@ export default function App() {
                   { id: 'f3', type: 'select', name: 'role', label: 'User Role', placeholder: 'Select role', required: true, options: ['User', 'Admin', 'Editor'] }
               ]
           };
+      } else if (type === 'avatarGroup') {
+          base.name = 'Avatar Group';
+          base.style = { ...base.style, flexDirection: 'row', alignItems: 'center', width: 'auto' };
+          base.props = {
+              max: 4,
+              images: [
+                  'https://i.pravatar.cc/150?img=1',
+                  'https://i.pravatar.cc/150?img=2',
+                  'https://i.pravatar.cc/150?img=3',
+                  'https://i.pravatar.cc/150?img=4',
+                  'https://i.pravatar.cc/150?img=5',
+                  'https://i.pravatar.cc/150?img=6'
+              ]
+          };
+      } else if (type === 'interaction') {
+          base.name = 'Social Interactions';
+          base.style = { ...base.style, flexDirection: 'row', alignItems: 'center', gap: '16px', width: 'auto' };
+          base.props = {
+              likes: 120,
+              dislikes: 5,
+              views: 1500,
+              liked: false,
+              disliked: false
+          };
       }
 
       // Templates with full children structure

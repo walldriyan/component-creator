@@ -1,7 +1,7 @@
 
-import React, { MouseEvent, useRef, useState, useLayoutEffect, useEffect, useMemo } from 'react';
+import React, { MouseEvent, useRef, useState, useLayoutEffect, useEffect, useMemo, useCallback } from 'react';
 import { ComponentNode } from '../types';
-import { Settings, Home, User, Bell, Search, Menu, Star, Heart, Share, ArrowRight, Box, Check, X, Layout, Maximize2, Scaling, Copy, CreditCard, Link as LinkIcon, Image as ImageIcon, Square, Minimize2, MoveHorizontal, MoveVertical, ChevronDown, ArrowUp, ArrowDown, AlignCenter, AlignLeft, ArrowRightFromLine, ArrowDownFromLine, Trash2, Minimize, Maximize, ChevronLeft, ChevronRight, Edit, Eye, MoreHorizontal, Plus, Download, Upload, FileText } from 'lucide-react';
+import { Settings, Home, User, Bell, Search, Menu, Star, Heart, Share, ArrowRight, Box, Check, X, Layout, Maximize2, Scaling, Copy, CreditCard, Link as LinkIcon, Image as ImageIcon, Square, Minimize2, MoveHorizontal, MoveVertical, ChevronDown, ArrowUp, ArrowDown, AlignCenter, AlignLeft, ArrowRightFromLine, ArrowDownFromLine, Trash2, Minimize, Maximize, ChevronLeft, ChevronRight, Edit, Eye, MoreHorizontal, Plus, Download, Upload, FileText, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -12,7 +12,7 @@ function cn(...inputs: ClassValue[]) {
 // Expanded Icon Map for more options
 const IconMap: Record<string, any> = {
   Home, User, Settings, Bell, Search, Menu, Star, Heart, Share, ArrowRight, Box, Check, X, Layout,
-  Edit, Eye, Trash2, MoreHorizontal, Plus, Download, Upload, ChevronRight, ChevronLeft, FileText
+  Edit, Eye, Trash2, MoreHorizontal, Plus, Download, Upload, ChevronRight, ChevronLeft, FileText, ThumbsUp, ThumbsDown
 };
 
 interface CanvasProps {
@@ -330,6 +330,113 @@ const FormRenderer = ({ node }: { node: ComponentNode }) => {
     );
 };
 
+// --- Avatar Group Renderer ---
+const AvatarGroupRenderer = ({ node }: { node: ComponentNode }) => {
+    const images = node.props.images || [];
+    const max = node.props.max || 3;
+    const displayed = images.slice(0, max);
+    const remaining = Math.max(0, images.length - max);
+
+    return (
+        <div className="flex -space-x-4 rtl:space-x-reverse">
+            {displayed.map((src: string, index: number) => (
+                <img 
+                    key={index} 
+                    className="w-10 h-10 border-2 border-white rounded-full dark:border-gray-800 object-cover" 
+                    src={src} 
+                    alt={`Avatar ${index + 1}`} 
+                />
+            ))}
+            {remaining > 0 && (
+                <div className="flex items-center justify-center w-10 h-10 text-xs font-medium text-white bg-gray-700 border-2 border-white rounded-full hover:bg-gray-600 dark:border-gray-800">
+                    +{remaining}
+                </div>
+            )}
+        </div>
+    );
+};
+
+// --- Social Interaction Renderer ---
+const InteractionRenderer = ({ node }: { node: ComponentNode }) => {
+    // Local state for simulation in Canvas
+    const [likes, setLikes] = useState(node.props.likes || 0);
+    const [dislikes, setDislikes] = useState(node.props.dislikes || 0);
+    const [liked, setLiked] = useState(node.props.liked || false);
+    const [disliked, setDisliked] = useState(node.props.disliked || false);
+
+    useEffect(() => {
+        setLikes(node.props.likes || 0);
+        setDislikes(node.props.dislikes || 0);
+        setLiked(node.props.liked || false);
+        setDisliked(node.props.disliked || false);
+    }, [node.props]);
+
+    const handleLike = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (liked) {
+            setLikes((p: number) => p - 1);
+            setLiked(false);
+        } else {
+            setLikes((p: number) => p + 1);
+            setLiked(true);
+            if (disliked) {
+                setDislikes((p: number) => p - 1);
+                setDisliked(false);
+            }
+        }
+        console.log('Interaction Event: Toggle Like', { id: node.id });
+    };
+
+    const handleDislike = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (disliked) {
+            setDislikes((p: number) => p - 1);
+            setDisliked(false);
+        } else {
+            setDislikes((p: number) => p + 1);
+            setDisliked(true);
+            if (liked) {
+                setLikes((p: number) => p - 1);
+                setLiked(false);
+            }
+        }
+        console.log('Interaction Event: Toggle Dislike', { id: node.id });
+    };
+
+    return (
+        <div className="flex items-center gap-4 p-2 rounded-lg bg-slate-50/50 border border-slate-100 w-fit">
+            <button 
+                onClick={handleLike}
+                className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all active:scale-95",
+                    liked ? "bg-blue-100 text-blue-600" : "hover:bg-slate-200 text-slate-600"
+                )}
+            >
+                <ThumbsUp size={16} className={cn("transition-transform", liked && "scale-110")} fill={liked ? "currentColor" : "none"} />
+                <span>{likes}</span>
+            </button>
+
+            <button 
+                onClick={handleDislike}
+                className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all active:scale-95",
+                    disliked ? "bg-red-100 text-red-600" : "hover:bg-slate-200 text-slate-600"
+                )}
+            >
+                <ThumbsDown size={16} className={cn("transition-transform", disliked && "scale-110 mt-1")} fill={disliked ? "currentColor" : "none"} />
+                <span>{dislikes}</span>
+            </button>
+            
+            <div className="w-px h-5 bg-slate-200 mx-1" />
+
+            <div className="flex items-center gap-1.5 px-2 text-sm text-slate-500" title="Views">
+                <Eye size={16} />
+                <span>{node.props.views?.toLocaleString() || 0}</span>
+            </div>
+        </div>
+    );
+};
+
 const CanvasRenderer: React.FC<CanvasProps> = React.memo(({ node, selectedId, onSelect, onDrop, onDelete, onResize, onUpdate, onDuplicate, onWrap, index = 0, parentId = null }) => {
   const isSelected = selectedId === node.id;
   const elementRef = useRef<HTMLDivElement>(null);
@@ -398,7 +505,7 @@ const CanvasRenderer: React.FC<CanvasProps> = React.memo(({ node, selectedId, on
     const height = rect.height;
     const relativeY = e.clientY - rect.top;
     
-    const isLeaf = ['text', 'image', 'input', 'icon', 'switch', 'checkbox', 'divider', 'textarea', 'select', 'table', 'form'].includes(node.type);
+    const isLeaf = ['text', 'image', 'input', 'icon', 'switch', 'checkbox', 'divider', 'textarea', 'select', 'table', 'form', 'avatarGroup', 'interaction'].includes(node.type);
     const canAcceptChildren = !isLeaf;
     
     let newPosition: 'top' | 'bottom' | 'inside' | null = null;
@@ -502,6 +609,8 @@ const CanvasRenderer: React.FC<CanvasProps> = React.memo(({ node, selectedId, on
       
       if (node.type === 'table') return <TableRenderer node={node} />;
       if (node.type === 'form') return <FormRenderer node={node} />;
+      if (node.type === 'avatarGroup') return <AvatarGroupRenderer node={node} />;
+      if (node.type === 'interaction') return <InteractionRenderer node={node} />;
 
       return null;
   };

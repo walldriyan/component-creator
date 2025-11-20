@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Type, MousePointer2, CreditCard, Layout, Image as ImageIcon, Star, PanelLeft, GripHorizontal, SplitSquareHorizontal, ToggleLeft, CheckSquare, TextCursorInput, ChevronDown, CaseSensitive, Table, FileText } from 'lucide-react';
+import { Box, Type, MousePointer2, CreditCard, Layout, Image as ImageIcon, Star, PanelLeft, GripHorizontal, SplitSquareHorizontal, ToggleLeft, CheckSquare, TextCursorInput, ChevronDown, CaseSensitive, Table, FileText, Users, ThumbsUp } from 'lucide-react';
 import { ComponentType } from '../types';
 
 const DraggableItem = ({ type, label, icon: Icon, onDragStart }: { type: string, label: string, icon: any, onDragStart: (e: React.DragEvent, type: string) => void }) => {
@@ -49,10 +49,16 @@ export default function ComponentLibrary() {
         </div>
 
         <div className="mb-6">
-          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Content</h3>
+          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Content & Media</h3>
           <DraggableItem type="text" label="Text Block" icon={Type} onDragStart={handleDragStart} />
           <DraggableItem type="image" label="Image" icon={ImageIcon} onDragStart={handleDragStart} />
+          <DraggableItem type="avatarGroup" label="Avatar Group" icon={Users} onDragStart={handleDragStart} />
           <DraggableItem type="icon" label="Icon" icon={Star} onDragStart={handleDragStart} />
+          <DraggableItem type="interaction" label="Social Interaction" icon={ThumbsUp} onDragStart={handleDragStart} />
+        </div>
+
+        <div className="mb-6">
+          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Advanced</h3>
           <DraggableItem type="table" label="Smart Table" icon={Table} onDragStart={handleDragStart} />
           <DraggableItem type="form" label="Smart Form" icon={FileText} onDragStart={handleDragStart} />
         </div>
