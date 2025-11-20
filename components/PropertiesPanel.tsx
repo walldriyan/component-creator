@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { ComponentNode, LibraryType } from '../types';
-import { Settings2, Layout, Palette, Square, Star, Ban } from 'lucide-react';
+import { Settings2, Layout, Palette, Square, Star, Ban, MousePointerClick, Move, Code } from 'lucide-react';
 
 interface PropertiesPanelProps {
   node: ComponentNode | null;
@@ -40,9 +41,9 @@ export default function PropertiesPanel({ node, onChange, onStyleChange }: Prope
              <div>
                <label className="block text-xs font-medium text-gray-500 mb-1.5">Library</label>
                <select className={inputClass} value={node.library} onChange={(e) => onChange({ library: e.target.value as LibraryType })}>
-                 <option value="plain">Tailwind</option>
-                 <option value="radix">Radix UI</option>
+                 <option value="radix">Radix UI (Default)</option>
                  <option value="shadcn">Shadcn UI</option>
+                 <option value="plain">Plain HTML/Tailwind</option>
                </select>
              </div>
 
@@ -68,7 +69,46 @@ export default function PropertiesPanel({ node, onChange, onStyleChange }: Prope
                      <input type="text" className={inputClass} value={node.iconName || ''} onChange={(e) => onChange({ iconName: e.target.value })} placeholder="Home, User..." />
                  </div>
              )}
+             
+             {node.type === 'container' && (
+                 <div className="flex items-center gap-2 mt-2">
+                    <input 
+                        type="checkbox" 
+                        id="cursorPointer" 
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                        checked={node.style.cursor === 'pointer'} 
+                        onChange={(e) => onStyleChange({ cursor: e.target.checked ? 'pointer' : 'default' })} 
+                    />
+                    <label htmlFor="cursorPointer" className="text-sm text-gray-700 flex items-center gap-1"><MousePointerClick size={12}/> Clickable (Hover Effect)</label>
+                </div>
+             )}
            </div>
+        </section>
+
+        {/* Positioning */}
+        <section>
+            <h3 className={sectionHeaderClass}><Move size={14} /> Positioning</h3>
+            <div className="space-y-4">
+                <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Position</label>
+                    <select className={inputClass} value={node.style.position || 'relative'} onChange={(e) => onStyleChange({ position: e.target.value })}>
+                        <option value="relative">Relative (Default)</option>
+                        <option value="absolute">Absolute</option>
+                        <option value="fixed">Fixed</option>
+                        <option value="static">Static</option>
+                    </select>
+                </div>
+                <div className="grid grid-cols-2 gap-2 p-2 bg-gray-50 rounded border border-gray-100">
+                    <div><label className="block text-[10px] font-medium text-gray-400 mb-1">Top</label><input type="text" className="w-full text-xs border border-gray-200 rounded p-1" placeholder="auto" value={node.style.top || ''} onChange={(e) => onStyleChange({ top: e.target.value })} /></div>
+                    <div><label className="block text-[10px] font-medium text-gray-400 mb-1">Right</label><input type="text" className="w-full text-xs border border-gray-200 rounded p-1" placeholder="auto" value={node.style.right || ''} onChange={(e) => onStyleChange({ right: e.target.value })} /></div>
+                    <div><label className="block text-[10px] font-medium text-gray-400 mb-1">Bottom</label><input type="text" className="w-full text-xs border border-gray-200 rounded p-1" placeholder="auto" value={node.style.bottom || ''} onChange={(e) => onStyleChange({ bottom: e.target.value })} /></div>
+                    <div><label className="block text-[10px] font-medium text-gray-400 mb-1">Left</label><input type="text" className="w-full text-xs border border-gray-200 rounded p-1" placeholder="auto" value={node.style.left || ''} onChange={(e) => onStyleChange({ left: e.target.value })} /></div>
+                </div>
+                <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Z-Index</label>
+                    <input type="text" className={inputClass} placeholder="0" value={node.style.zIndex || ''} onChange={(e) => onStyleChange({ zIndex: e.target.value })} />
+                </div>
+            </div>
         </section>
 
         {/* Layout Settings */}
@@ -152,8 +192,16 @@ export default function PropertiesPanel({ node, onChange, onStyleChange }: Prope
            <div className="space-y-4">
                <div className="grid grid-cols-2 gap-3">
                    <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Radius</label><input type="text" className={inputClass} placeholder="4px" value={node.style.borderRadius || ''} onChange={(e) => onStyleChange({ borderRadius: e.target.value })} /></div>
-                    <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Width</label><input type="text" className={inputClass} placeholder="1px" value={node.style.borderWidth || ''} onChange={(e) => onStyleChange({ borderWidth: e.target.value })} /></div>
+                    <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Width (All)</label><input type="text" className={inputClass} placeholder="1px" value={node.style.borderWidth || ''} onChange={(e) => onStyleChange({ borderWidth: e.target.value })} /></div>
                </div>
+               
+               <div className="grid grid-cols-2 gap-2 p-2 bg-gray-50 rounded border border-gray-100">
+                    <div><label className="block text-[10px] font-medium text-gray-400 mb-1">Top</label><input type="text" className="w-full text-xs border border-gray-200 rounded p-1" placeholder="0px" value={node.style.borderTop || ''} onChange={(e) => onStyleChange({ borderTop: e.target.value })} /></div>
+                    <div><label className="block text-[10px] font-medium text-gray-400 mb-1">Right</label><input type="text" className="w-full text-xs border border-gray-200 rounded p-1" placeholder="0px" value={node.style.borderRight || ''} onChange={(e) => onStyleChange({ borderRight: e.target.value })} /></div>
+                    <div><label className="block text-[10px] font-medium text-gray-400 mb-1">Bottom</label><input type="text" className="w-full text-xs border border-gray-200 rounded p-1" placeholder="0px" value={node.style.borderBottom || ''} onChange={(e) => onStyleChange({ borderBottom: e.target.value })} /></div>
+                    <div><label className="block text-[10px] font-medium text-gray-400 mb-1">Left</label><input type="text" className="w-full text-xs border border-gray-200 rounded p-1" placeholder="0px" value={node.style.borderLeft || ''} onChange={(e) => onStyleChange({ borderLeft: e.target.value })} /></div>
+               </div>
+
                <div>
                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Border Color</label>
                    <div className="flex gap-2">
@@ -162,6 +210,24 @@ export default function PropertiesPanel({ node, onChange, onStyleChange }: Prope
                    </div>
                </div>
            </div>
+        </section>
+
+        {/* Events */}
+        <section>
+            <h3 className={sectionHeaderClass}><Code size={14} /> Events</h3>
+            <div className="space-y-4">
+                <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">OnClick Function</label>
+                    <input 
+                        type="text" 
+                        className={inputClass} 
+                        placeholder="handleClick" 
+                        value={node.events?.onClick || ''} 
+                        onChange={(e) => onChange({ events: { ...node.events, onClick: e.target.value } })} 
+                    />
+                    <p className="text-[10px] text-gray-400 mt-1">Enter function name (e.g., handleSubmit)</p>
+                </div>
+            </div>
         </section>
 
       </div>

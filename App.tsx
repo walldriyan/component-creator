@@ -121,7 +121,7 @@ export default function App() {
         id: genId(),
         type: type as ComponentType,
         name: type,
-        library: 'shadcn', 
+        library: 'radix', // Default set to Radix
         props: {},
         style: {
             padding: '0px', 
@@ -141,7 +141,7 @@ export default function App() {
               ...base.style, 
               width: '100%', 
               minHeight: '100px', 
-              backgroundColor: '#f8fafc', // Light gray for dragged elements
+              backgroundColor: '#f8fafc', 
               padding: '16px', 
               borderWidth: '1px', 
               borderStyle: 'dashed', 
@@ -152,7 +152,7 @@ export default function App() {
                ...base.style, 
                width: '100%', 
                minHeight: '150px', 
-               backgroundColor: '#f8fafc', // Light gray for dragged elements
+               backgroundColor: '#ffffff', 
                padding: '0px', 
                borderWidth: '1px', 
                borderStyle: 'solid', 
@@ -161,25 +161,34 @@ export default function App() {
            };
       } else if (type === 'button') {
           base.content = 'Button';
-          base.style = { ...base.style, width: 'auto', height: 'auto' };
+          base.style = { 
+            ...base.style, 
+            width: 'auto', 
+            height: 'auto', 
+            backgroundColor: '#1e293b', 
+            color: '#ffffff', 
+            padding: '8px 16px', 
+            borderRadius: '6px',
+            cursor: 'pointer'
+          };
       } else if (type === 'text') {
           base.content = 'Text block';
           base.style = { ...base.style, width: 'auto' };
       } else if (type === 'input') {
           base.content = 'Enter text...';
-          base.style = { ...base.style, width: '100%', height: '40px' };
+          base.style = { ...base.style, width: '100%', height: '40px', borderWidth: '1px', padding: '8px' };
       } else if (type === 'textarea') {
           base.content = 'Type your message here.';
-          base.style = { ...base.style, width: '100%', height: 'auto', minHeight: '80px' };
+          base.style = { ...base.style, width: '100%', height: 'auto', minHeight: '80px', borderWidth: '1px', padding: '8px' };
       } else if (type === 'select') {
           base.content = 'Select an option';
-          base.style = { ...base.style, width: '200px', height: '40px' };
+          base.style = { ...base.style, width: '200px', height: '40px', borderWidth: '1px', padding: '8px' };
       } else if (type === 'checkbox') {
           base.content = 'Checkbox Label';
           base.style = { 
             ...base.style, 
-            width: '100px', 
-            height: '20px',
+            width: 'auto', 
+            height: 'auto',
             flexDirection: 'row',
             alignItems: 'center',
             gap: '8px'
@@ -189,8 +198,8 @@ export default function App() {
           base.content = 'Switch Label';
           base.style = { 
             ...base.style, 
-            width: '100px', 
-            height: '20px',
+            width: 'auto', 
+            height: 'auto',
             flexDirection: 'row',
             alignItems: 'center',
             gap: '8px'
@@ -211,13 +220,13 @@ export default function App() {
       if (type === 'sidebar') {
            const sidebarId = genId();
            
-           const createMenuItem = (label: string, icon: string): ComponentNode => {
+           const createMenuItem = (label: string, icon: string, isActive: boolean = false): ComponentNode => {
                const itemId = genId();
                return {
                    id: itemId,
                    type: 'container',
                    name: 'Menu Item',
-                   library: 'shadcn',
+                   library: 'radix',
                    props: {},
                    style: { 
                        width: '100%', 
@@ -226,13 +235,13 @@ export default function App() {
                        flexDirection: 'row', 
                        alignItems: 'center', 
                        gap: '12px', 
-                       backgroundColor: 'transparent', 
-                       color: '#64748b',
-                       cursor: 'pointer'
+                       backgroundColor: isActive ? '#eff6ff' : 'transparent', 
+                       color: isActive ? '#2563eb' : '#64748b',
+                       cursor: 'pointer' 
                    },
                    children: [
-                       { id: genId(), type: 'icon', name: 'Icon', library: 'shadcn', props: {}, style: {}, iconName: icon, children: [], parentId: itemId },
-                       { id: genId(), type: 'text', name: 'Label', library: 'shadcn', props: {}, style: { fontSize: '14px', fontWeight: '500' }, content: label, children: [], parentId: itemId }
+                       { id: genId(), type: 'icon', name: 'Icon', library: 'radix', props: {}, style: { color: isActive ? '#2563eb' : 'inherit' }, iconName: icon, children: [], parentId: itemId },
+                       { id: genId(), type: 'text', name: 'Label', library: 'radix', props: {}, style: { fontSize: '14px', fontWeight: '500', color: 'inherit' }, content: label, children: [], parentId: itemId }
                    ],
                    parentId: sidebarId
                };
@@ -257,21 +266,21 @@ export default function App() {
                        id: genId(),
                        type: 'text',
                        name: 'Brand',
-                       library: 'shadcn',
+                       library: 'radix',
                        props: {},
                        style: { fontSize: '20px', fontWeight: 'bold', marginBottom: '24px', color: '#0f172a' },
                        content: 'Dashboard',
                        children: [],
                        parentId: sidebarId
                    },
-                   createMenuItem('Home', 'Home'),
+                   createMenuItem('Home', 'Home', true), 
                    createMenuItem('Profile', 'User'),
                    createMenuItem('Settings', 'Settings'),
                    {
                         id: genId(),
                         type: 'container',
                         name: 'Spacer',
-                        library: 'shadcn',
+                        library: 'radix',
                         props: {},
                         style: { flexGrow: 1 },
                         children: [],
@@ -281,7 +290,7 @@ export default function App() {
                        id: genId(),
                        type: 'divider',
                        name: 'Divider',
-                       library: 'shadcn',
+                       library: 'radix',
                        props: {},
                        style: { width: '100%', height: '1px', backgroundColor: '#e2e8f0', margin: '10px 0' },
                        children: [],
@@ -293,7 +302,6 @@ export default function App() {
                ]
            };
            
-           // Fix parentId for generated children recursively
            const setParentIds = (node: ComponentNode, pid: string | null) => {
                node.parentId = pid;
                node.children.forEach(c => setParentIds(c, node.id));
@@ -326,12 +334,12 @@ export default function App() {
                        id: genId(),
                        type: 'container',
                        name: 'Logo Group',
-                       library: 'shadcn',
+                       library: 'radix',
                        props: {},
                        style: { flexDirection: 'row', alignItems: 'center', gap: '10px' },
                        children: [
-                            { id: genId(), type: 'icon', name: 'Logo Icon', library: 'shadcn', props: {}, style: { color: '#2563eb' }, iconName: 'Box', children: [], parentId: '' },
-                            { id: genId(), type: 'text', name: 'Brand', library: 'shadcn', props: {}, style: { fontSize: '18px', fontWeight: 'bold', color: '#0f172a' }, content: 'Brand', children: [], parentId: '' }
+                            { id: genId(), type: 'icon', name: 'Logo Icon', library: 'radix', props: {}, style: { color: '#2563eb' }, iconName: 'Box', children: [], parentId: '' },
+                            { id: genId(), type: 'text', name: 'Brand', library: 'radix', props: {}, style: { fontSize: '18px', fontWeight: 'bold', color: '#0f172a' }, content: 'Brand', children: [], parentId: '' }
                        ],
                        parentId: navbarId
                    },
@@ -340,19 +348,26 @@ export default function App() {
                        id: genId(),
                        type: 'container',
                        name: 'Links Group',
-                       library: 'shadcn',
+                       library: 'radix',
                        props: {},
                        style: { flexDirection: 'row', alignItems: 'center', gap: '24px' },
                        children: [
-                           { id: genId(), type: 'text', name: 'Link', library: 'shadcn', props: {}, style: { fontSize: '14px', fontWeight: '500', color: '#64748b', cursor: 'pointer' }, content: 'Overview', children: [], parentId: '' },
-                           { id: genId(), type: 'text', name: 'Link', library: 'shadcn', props: {}, style: { fontSize: '14px', fontWeight: '500', color: '#64748b', cursor: 'pointer' }, content: 'Customers', children: [], parentId: '' },
+                           { id: genId(), type: 'text', name: 'Link', library: 'radix', props: {}, style: { fontSize: '14px', fontWeight: '500', color: '#0f172a', cursor: 'pointer' }, content: 'Overview', children: [], parentId: '' }, 
+                           { id: genId(), type: 'text', name: 'Link', library: 'radix', props: {}, style: { fontSize: '14px', fontWeight: '500', color: '#64748b', cursor: 'pointer' }, content: 'Customers', children: [], parentId: '' },
                            { 
                                id: genId(), 
                                type: 'button', 
                                name: 'Action', 
-                               library: 'shadcn', 
+                               library: 'radix', 
                                props: { variant: 'default' }, 
-                               style: { height: '36px', borderRadius: '6px' }, 
+                               style: { 
+                                 height: '36px', 
+                                 borderRadius: '6px', 
+                                 backgroundColor: '#1e293b', 
+                                 color: 'white', 
+                                 padding: '0 16px',
+                                 cursor: 'pointer' 
+                               }, 
                                content: 'Log In', 
                                children: [], 
                                parentId: '' 
@@ -363,7 +378,6 @@ export default function App() {
                ]
            };
            
-           // Fix parentId for generated children recursively
            const setParentIds = (node: ComponentNode, pid: string | null) => {
                node.parentId = pid;
                node.children.forEach(c => setParentIds(c, node.id));

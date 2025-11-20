@@ -20,6 +20,8 @@ export interface StyleProps {
   borderStyle?: 'solid' | 'dashed' | 'dotted' | 'none';
   borderRight?: string;
   borderBottom?: string;
+  borderTop?: string;
+  borderLeft?: string;
   flexDirection?: 'row' | 'column';
   justifyContent?: 'flex-start' | 'center' | 'flex-end' | 'space-between';
   alignItems?: 'flex-start' | 'center' | 'flex-end' | 'stretch';
@@ -31,6 +33,13 @@ export interface StyleProps {
   textAlign?: 'left' | 'center' | 'right';
   boxShadow?: string;
   cursor?: string;
+  // Positioning
+  position?: 'relative' | 'absolute' | 'fixed' | 'static';
+  top?: string;
+  left?: string;
+  right?: string;
+  bottom?: string;
+  zIndex?: string;
 }
 
 export interface ComponentNode {
@@ -45,6 +54,9 @@ export interface ComponentNode {
   href?: string;
   children: ComponentNode[];
   parentId?: string | null;
+  events?: {
+    onClick?: string;
+  };
 }
 
 export interface DragItem {
@@ -57,7 +69,7 @@ export const initialCanvas: ComponentNode = {
   id: 'root',
   type: 'container',
   name: 'Root Page',
-  library: 'shadcn',
+  library: 'radix',
   props: {},
   style: {
     width: '100%',
@@ -69,6 +81,7 @@ export const initialCanvas: ComponentNode = {
     gap: '20px', 
     justifyContent: 'flex-start',
     overflow: 'hidden',
+    position: 'relative',
   },
   children: [],
 };
