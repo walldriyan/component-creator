@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Type, MousePointer2, CreditCard, Layout, Image as ImageIcon, Star, PanelLeft, GripHorizontal, SplitSquareHorizontal, ToggleLeft, CheckSquare, TextCursorInput, ChevronDown, CaseSensitive } from 'lucide-react';
+import { Box, Type, MousePointer2, CreditCard, Layout, Image as ImageIcon, Star, PanelLeft, GripHorizontal, SplitSquareHorizontal, ToggleLeft, CheckSquare, TextCursorInput, ChevronDown, CaseSensitive, Table } from 'lucide-react';
 import { ComponentType } from '../types';
 
 const DraggableItem = ({ type, label, icon: Icon, onDragStart }: { type: string, label: string, icon: any, onDragStart: (e: React.DragEvent, type: string) => void }) => {
@@ -53,6 +53,7 @@ export default function ComponentLibrary() {
           <DraggableItem type="text" label="Text Block" icon={Type} onDragStart={handleDragStart} />
           <DraggableItem type="image" label="Image" icon={ImageIcon} onDragStart={handleDragStart} />
           <DraggableItem type="icon" label="Icon" icon={Star} onDragStart={handleDragStart} />
+          <DraggableItem type="table" label="Smart Table" icon={Table} onDragStart={handleDragStart} />
         </div>
 
         <div>

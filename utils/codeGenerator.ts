@@ -108,8 +108,18 @@ const collectImports = (node: ComponentNode, imports: Set<string>, components: S
         }
         // Other Radix primitives are typically plain HTML with logic, but here we map what we use.
     }
+    
+    // Table needs icons for pagination/search
+    if (node.type === 'table') {
+        imports.add('import { Search, ChevronLeft, ChevronRight } from "lucide-react"');
+    }
 
     node.children.forEach(child => collectImports(child, imports, components));
+};
+
+const hasTable = (node: ComponentNode): boolean => {
+    if (node.type === 'table') return true;
+    return node.children.some(hasTable);
 };
 
 const generateNode = (node: ComponentNode, indent: number = 0): string => {
@@ -124,6 +134,58 @@ const generateNode = (node: ComponentNode, indent: number = 0): string => {
       if (node.href) return `${spaces}<Link href="${node.href}">\n  ${content}\n${spaces}</Link>`;
       return content;
   };
+
+  // --- Table Generation ---
+  if (node.type === 'table') {
+      const dataStr = JSON.stringify(node.props.data || [], null, 2);
+      const headers = node.props.data && node.props.data.length > 0 ? Object.keys(node.props.data[0]) : [];
+      
+      // Logic is hoisted to the main component, here we render the UI relying on state
+      return `
+${spaces}<div ${classNameProp}>
+${spaces}  <div className="p-3 border-b border-gray-200 bg-white flex items-center gap-2">
+${spaces}    <Search size={16} className="text-gray-400" />
+${spaces}    <input 
+${spaces}       type="text" 
+${spaces}       placeholder="Search..." 
+${spaces}       className="text-sm outline-none w-full text-gray-700 placeholder:text-gray-400"
+${spaces}       value={searchTerm}
+${spaces}       onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+${spaces}    />
+${spaces}  </div>
+${spaces}  <div className="flex-1 overflow-auto">
+${spaces}    <table className="w-full text-sm text-left">
+${spaces}      <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b">
+${spaces}        <tr>
+${spaces}          {${JSON.stringify(headers)}.map(h => (
+${spaces}             <th key={h} className="px-4 py-3 font-semibold">{h}</th>
+${spaces}          ))}
+${spaces}        </tr>
+${spaces}      </thead>
+${spaces}      <tbody>
+${spaces}        {paginatedData.length > 0 ? paginatedData.map((row: any, i: number) => (
+${spaces}          <tr key={i} className="border-b last:border-0 even:bg-slate-50 hover:bg-blue-50 transition-colors">
+${spaces}            {${JSON.stringify(headers)}.map(h => (
+${spaces}               <td key={h} className="px-4 py-3 text-gray-600">{row[h]}</td>
+${spaces}            ))}
+${spaces}          </tr>
+${spaces}        )) : (
+${spaces}          <tr><td colSpan={${headers.length}} className="text-center py-4 text-gray-500">No records</td></tr>
+${spaces}        )}
+${spaces}      </tbody>
+${spaces}    </table>
+${spaces}  </div>
+${spaces}  {totalPages > 1 && (
+${spaces}    <div className="p-3 border-t border-gray-200 bg-white flex items-center justify-between text-xs text-gray-500">
+${spaces}       <span>Page {currentPage} of {totalPages}</span>
+${spaces}       <div className="flex gap-1">
+${spaces}         <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} className="p-1 rounded hover:bg-gray-100 disabled:opacity-50"><ChevronLeft size={16} /></button>
+${spaces}         <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} className="p-1 rounded hover:bg-gray-100 disabled:opacity-50"><ChevronRight size={16} /></button>
+${spaces}       </div>
+${spaces}    </div>
+${spaces}  )}
+${spaces}</div>`;
+  }
 
   // --- Shadcn Library ---
   if (node.library === 'shadcn') {
@@ -182,6 +244,11 @@ export const generateFullCode = (root: ComponentNode) => {
   const imports = new Set<string>();
   const components = new Set<string>();
   const lucideIcons = new Set<string>();
+  const useTable = hasTable(root);
+
+  if (useTable) {
+      imports.add('import { useState, useMemo } from "react"');
+  }
 
   collectImports(root, imports, components);
   
@@ -196,13 +263,51 @@ export const generateFullCode = (root: ComponentNode) => {
       importBlock += `import { ${Array.from(lucideIcons).join(', ')} } from 'lucide-react';\n`;
   }
 
+  // Logic injection for Table if exists
+  let componentLogic = '';
+  
+  if (useTable) {
+      // Find the table data. For this simple generator, we pick the first table's data or a generic one.
+      // In a real app you'd extract all data variables. Here we assume one table for simplicity of generation logic.
+      const findTableData = (n: ComponentNode): any => {
+          if (n.type === 'table') return n.props.data;
+          for (const c of n.children) {
+              const d = findTableData(c);
+              if (d) return d;
+          }
+          return null;
+      }
+      const tableData = findTableData(root) || [];
+      
+      componentLogic = `
+  const tableData = ${JSON.stringify(tableData, null, 2)};
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  const filteredData = useMemo(() => {
+    if (!searchTerm) return tableData;
+    return tableData.filter((item: any) => 
+        Object.values(item).some(val => 
+            String(val).toLowerCase().includes(searchTerm.toLowerCase())
+        )
+    );
+  }, [searchTerm]);
+
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+      `;
+  }
+
   return `import React from 'react';
 ${importBlock}
 
 export default function Page() {
-  // Event Handlers could be generated here
+  ${componentLogic}
+  // Event Handlers
   return (
 ${generateNode(root, 2)}
   );
 }
 `;
+};

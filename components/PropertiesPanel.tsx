@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { ComponentNode, LibraryType } from '../types';
-import { Settings2, Layout, Palette, Square, Star, Ban, MousePointerClick, Move, Code } from 'lucide-react';
+import { Settings2, Layout, Palette, Square, Star, Ban, MousePointerClick, Move, Code, TableProperties } from 'lucide-react';
 
 interface PropertiesPanelProps {
   node: ComponentNode | null;
@@ -21,6 +21,15 @@ export default function PropertiesPanel({ node, onChange, onStyleChange }: Prope
 
   const inputClass = "w-full text-sm border border-gray-200 bg-[#fafafa] hover:bg-white focus:bg-white rounded-md p-2 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-gray-700";
   const sectionHeaderClass = "text-xs font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-gray-100 pb-2";
+
+  const handleJsonChange = (value: string) => {
+      try {
+          const parsed = JSON.parse(value);
+          onChange({ props: { ...node.props, data: parsed } });
+      } catch (e) {
+          // Allow user to type invalid JSON while editing, maybe show error in future
+      }
+  };
 
   return (
     <div className="w-80 bg-white border-l border-gray-200 h-full flex flex-col overflow-y-auto shadow-[rgba(0,0,0,0.05)_0px_0px_10px] z-20">
@@ -84,6 +93,23 @@ export default function PropertiesPanel({ node, onChange, onStyleChange }: Prope
              )}
            </div>
         </section>
+        
+        {/* Table Data Editor */}
+        {node.type === 'table' && (
+            <section>
+                <h3 className={sectionHeaderClass}><TableProperties size={14} /> Table Data (JSON)</h3>
+                <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">JSON Array</label>
+                    <textarea 
+                        className={`${inputClass} font-mono text-xs h-40 resize-y`} 
+                        defaultValue={JSON.stringify(node.props.data, null, 2)}
+                        onBlur={(e) => handleJsonChange(e.target.value)}
+                        placeholder='[{"id":1, "name":"John"}]'
+                    />
+                    <p className="text-[10px] text-gray-400 mt-1">Paste array of objects. Columns are auto-generated.</p>
+                </div>
+            </section>
+        )}
 
         {/* Positioning */}
         <section>

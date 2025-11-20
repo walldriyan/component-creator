@@ -1,7 +1,7 @@
 
 import React, { MouseEvent, useRef, useState, useLayoutEffect, useEffect, useMemo } from 'react';
 import { ComponentNode } from '../types';
-import { Settings, Home, User, Bell, Search, Menu, Star, Heart, Share, ArrowRight, Box, Check, X, Layout, Maximize2, Scaling, Copy, CreditCard, Link as LinkIcon, Image as ImageIcon, Square, Minimize2, MoveHorizontal, MoveVertical, ChevronDown, ArrowUp, ArrowDown, AlignCenter, AlignLeft, ArrowRightFromLine, ArrowDownFromLine, Trash2, Minimize, Maximize } from 'lucide-react';
+import { Settings, Home, User, Bell, Search, Menu, Star, Heart, Share, ArrowRight, Box, Check, X, Layout, Maximize2, Scaling, Copy, CreditCard, Link as LinkIcon, Image as ImageIcon, Square, Minimize2, MoveHorizontal, MoveVertical, ChevronDown, ArrowUp, ArrowDown, AlignCenter, AlignLeft, ArrowRightFromLine, ArrowDownFromLine, Trash2, Minimize, Maximize, ChevronLeft, ChevronRight } from 'lucide-react';
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -121,6 +121,98 @@ const MenuBtn = ({ onClick, icon: Icon, title, variant = 'default' }: { onClick:
 
 const MenuDivider = () => <div className="w-[1px] h-4 bg-slate-600 mx-1 opacity-50"></div>;
 
+// --- Internal Table Logic ---
+const TableRenderer = ({ node }: { node: ComponentNode }) => {
+    const data = Array.isArray(node.props.data) ? node.props.data : [];
+    const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+
+    // Reset pagination if data changes
+    useEffect(() => setCurrentPage(1), [data.length]);
+
+    const filteredData = useMemo(() => {
+        if (!searchTerm) return data;
+        return data.filter(item => 
+            Object.values(item).some(val => 
+                String(val).toLowerCase().includes(searchTerm.toLowerCase())
+            )
+        );
+    }, [data, searchTerm]);
+
+    const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+    const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+    if (data.length === 0) return <div className="p-4 text-center text-gray-400">No data found in props.data</div>;
+    
+    const headers = Object.keys(data[0]);
+
+    return (
+        <div className="w-full h-full flex flex-col">
+            {/* Search Bar */}
+            <div className="p-3 border-b border-gray-200 bg-white flex items-center gap-2">
+                <Search size={16} className="text-gray-400" />
+                <input 
+                    type="text" 
+                    placeholder="Search..." 
+                    className="text-sm outline-none w-full text-gray-700 placeholder:text-gray-400"
+                    value={searchTerm}
+                    onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                />
+            </div>
+            
+            {/* Table Content */}
+            <div className="flex-1 overflow-auto">
+                <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b">
+                        <tr>
+                            {headers.map(h => (
+                                <th key={h} className="px-4 py-3 font-semibold">{h}</th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {paginatedData.length > 0 ? paginatedData.map((row, i) => (
+                            <tr key={i} className="border-b last:border-0 even:bg-slate-50 hover:bg-blue-50 transition-colors cursor-default">
+                                {headers.map(h => (
+                                    <td key={h} className="px-4 py-3 text-gray-600">{String((row as any)[h])}</td>
+                                ))}
+                            </tr>
+                        )) : (
+                            <tr>
+                                <td colSpan={headers.length} className="text-center py-4 text-gray-500">No matching records found</td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+                <div className="p-3 border-t border-gray-200 bg-white flex items-center justify-between text-xs text-gray-500">
+                    <span>Page {currentPage} of {totalPages}</span>
+                    <div className="flex gap-1">
+                        <button 
+                            disabled={currentPage === 1}
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            className="p-1 rounded hover:bg-gray-100 disabled:opacity-50"
+                        >
+                            <ChevronLeft size={16} />
+                        </button>
+                        <button 
+                            disabled={currentPage === totalPages}
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            className="p-1 rounded hover:bg-gray-100 disabled:opacity-50"
+                        >
+                            <ChevronRight size={16} />
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 const CanvasRenderer: React.FC<CanvasProps> = React.memo(({ node, selectedId, onSelect, onDrop, onDelete, onResize, onUpdate, onDuplicate, onWrap, index = 0, parentId = null }) => {
   const isSelected = selectedId === node.id;
   const elementRef = useRef<HTMLDivElement>(null);
@@ -189,7 +281,7 @@ const CanvasRenderer: React.FC<CanvasProps> = React.memo(({ node, selectedId, on
     const height = rect.height;
     const relativeY = e.clientY - rect.top;
     
-    const isLeaf = ['text', 'image', 'input', 'icon', 'switch', 'checkbox', 'divider', 'textarea', 'select'].includes(node.type);
+    const isLeaf = ['text', 'image', 'input', 'icon', 'switch', 'checkbox', 'divider', 'textarea', 'select', 'table'].includes(node.type);
     const canAcceptChildren = !isLeaf;
     
     let newPosition: 'top' | 'bottom' | 'inside' | null = null;
@@ -290,6 +382,9 @@ const CanvasRenderer: React.FC<CanvasProps> = React.memo(({ node, selectedId, on
       if (node.type === 'divider') return <div className="w-full h-[2px] bg-slate-300 my-2 min-w-[40px]" />;
       if (node.type === 'image') return <img src={node.content || 'https://picsum.photos/200'} alt="" className="w-full h-full object-cover pointer-events-none" />;
       if (node.type === 'icon' && node.iconName) return React.createElement(IconMap[node.iconName] || Box, { size: 24, className: "pointer-events-none" });
+      
+      if (node.type === 'table') return <TableRenderer node={node} />;
+
       return null;
   };
 

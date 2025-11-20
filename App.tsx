@@ -214,6 +214,33 @@ export default function App() {
               margin: '10px 0',
               minHeight: '1px'
           };
+      } else if (type === 'table') {
+          base.style = {
+              ...base.style,
+              width: '100%',
+              height: 'auto',
+              padding: '0px',
+              borderWidth: '1px',
+              borderColor: '#e2e8f0',
+              borderRadius: '8px',
+              backgroundColor: '#ffffff',
+              boxShadow: 'shadow-md'
+          };
+          // Mock Data for Table
+          base.props.data = [
+              { id: 1, name: 'John Doe', email: 'john@example.com', role: 'Admin', status: 'Active' },
+              { id: 2, name: 'Jane Smith', email: 'jane@example.com', role: 'User', status: 'Inactive' },
+              { id: 3, name: 'Robert Brown', email: 'robert@example.com', role: 'Editor', status: 'Active' },
+              { id: 4, name: 'Emily Davis', email: 'emily@example.com', role: 'User', status: 'Active' },
+              { id: 5, name: 'Michael Wilson', email: 'michael@example.com', role: 'User', status: 'Inactive' },
+              { id: 6, name: 'Sarah Johnson', email: 'sarah@example.com', role: 'Admin', status: 'Active' },
+              { id: 7, name: 'David Lee', email: 'david@example.com', role: 'Editor', status: 'Active' },
+              { id: 8, name: 'Laura White', email: 'laura@example.com', role: 'User', status: 'Inactive' },
+              { id: 9, name: 'Daniel Martin', email: 'daniel@example.com', role: 'User', status: 'Active' },
+              { id: 10, name: 'Olivia Moore', email: 'olivia@example.com', role: 'Editor', status: 'Active' },
+              { id: 11, name: 'James Taylor', email: 'james@example.com', role: 'User', status: 'Inactive' },
+              { id: 12, name: 'Sophia Anderson', email: 'sophia@example.com', role: 'Admin', status: 'Active' },
+          ];
       }
 
       // Templates with full children structure
