@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { ComponentNode, LibraryType } from '../types';
-import { Settings2, Layout, Palette, Square, Star, Ban, MousePointerClick, Move, Code, TableProperties, MousePointer2, Plus, Trash2, Image as ImageIcon, Type } from 'lucide-react';
+import { Settings2, Layout, Palette, Square, Star, Ban, MousePointerClick, Move, Code, TableProperties, MousePointer2, Plus, Trash2, Image as ImageIcon, Type, FileText, Server, Link as LinkIcon, CheckCircle } from 'lucide-react';
 
 interface PropertiesPanelProps {
   node: ComponentNode | null;
@@ -15,6 +15,14 @@ export default function PropertiesPanel({ node, onChange, onStyleChange }: Prope
   const [newColHeader, setNewColHeader] = useState('');
   const [newColContent, setNewColContent] = useState('');
   const [newColFunc, setNewColFunc] = useState('');
+
+  // Local state for adding form field
+  const [newFieldType, setNewFieldType] = useState('text');
+  const [newFieldName, setNewFieldName] = useState('');
+  const [newFieldLabel, setNewFieldLabel] = useState('');
+  const [newFieldPlaceholder, setNewFieldPlaceholder] = useState('');
+  const [newFieldRequired, setNewFieldRequired] = useState(false);
+  const [newFieldOptions, setNewFieldOptions] = useState('');
 
   if (!node) {
     return (
@@ -58,6 +66,35 @@ export default function PropertiesPanel({ node, onChange, onStyleChange }: Prope
   const removeCustomColumn = (id: string) => {
       const existingCols = node.props.customColumns || [];
       onChange({ props: { ...node.props, customColumns: existingCols.filter((c: any) => c.id !== id) } });
+  };
+
+  const addFormField = () => {
+      if (!newFieldName || !newFieldLabel) return;
+      const newField = {
+          id: Date.now().toString(),
+          type: newFieldType,
+          name: newFieldName.replace(/\s+/g, '_').toLowerCase(), // Ensure valid key
+          label: newFieldLabel,
+          placeholder: newFieldPlaceholder,
+          required: newFieldRequired,
+          options: (newFieldType === 'select' || newFieldType === 'radio') && newFieldOptions 
+             ? newFieldOptions.split(',').map(s => s.trim()).filter(Boolean) 
+             : undefined
+      };
+      const existingFields = node.props.fields || [];
+      onChange({ props: { ...node.props, fields: [...existingFields, newField] } });
+      
+      // Reset
+      setNewFieldName('');
+      setNewFieldLabel('');
+      setNewFieldPlaceholder('');
+      setNewFieldRequired(false);
+      setNewFieldOptions('');
+  };
+
+  const removeFormField = (id: string) => {
+      const existingFields = node.props.fields || [];
+      onChange({ props: { ...node.props, fields: existingFields.filter((f: any) => f.id !== id) } });
   };
 
   return (
@@ -122,6 +159,114 @@ export default function PropertiesPanel({ node, onChange, onStyleChange }: Prope
              )}
            </div>
         </section>
+
+        {/* Form Builder Properties */}
+        {node.type === 'form' && (
+            <>
+            <section>
+                <h3 className={sectionHeaderClass}><Server size={14} /> Submission</h3>
+                <div className="space-y-3">
+                    <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1.5">Submission Mode</label>
+                        <div className="flex bg-slate-100 p-1 rounded-lg">
+                            <button 
+                                onClick={() => onChange({ props: { ...node.props, mode: 'serverAction' } })}
+                                className={`flex-1 text-xs py-1.5 rounded-md transition-all font-medium ${node.props.mode === 'serverAction' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}
+                            >Server Action</button>
+                            <button 
+                                onClick={() => onChange({ props: { ...node.props, mode: 'api' } })}
+                                className={`flex-1 text-xs py-1.5 rounded-md transition-all font-medium ${node.props.mode === 'api' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}
+                            >API Route</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                            {node.props.mode === 'serverAction' ? 'Action Name' : 'API Endpoint'}
+                        </label>
+                        <input 
+                            type="text" 
+                            className={inputClass} 
+                            placeholder={node.props.mode === 'serverAction' ? 'submitForm' : '/api/submit'}
+                            value={node.props.endpoint || ''} 
+                            onChange={(e) => onChange({ props: { ...node.props, endpoint: e.target.value } })}
+                        />
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h3 className={sectionHeaderClass}><FileText size={14} /> Form Fields</h3>
+                
+                {/* Existing Fields List */}
+                <div className="space-y-2 mb-4">
+                    {node.props.fields?.map((f: any) => (
+                        <div key={f.id} className="flex items-center justify-between p-2 bg-slate-50 border border-gray-200 rounded text-xs group">
+                            <div className="flex flex-col gap-0.5">
+                                <span className="font-bold text-gray-700">{f.label}</span>
+                                <div className="flex gap-2 text-[10px] text-gray-400">
+                                    <span>{f.name}</span>
+                                    <span>•</span>
+                                    <span className="uppercase">{f.type}</span>
+                                    {f.required && <span className="text-red-400">• Req</span>}
+                                </div>
+                            </div>
+                            <button onClick={() => removeFormField(f.id)} className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Trash2 size={14} />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Add New Field */}
+                <div className="bg-slate-50 p-3 rounded border border-slate-200 space-y-3">
+                    <h4 className="text-xs font-bold text-gray-500">Add New Field</h4>
+                    <div>
+                         <label className="block text-[10px] text-gray-500 mb-1">Input Type</label>
+                         <select className={inputClass} value={newFieldType} onChange={e => setNewFieldType(e.target.value)}>
+                             <option value="text">Text</option>
+                             <option value="email">Email</option>
+                             <option value="password">Password</option>
+                             <option value="number">Number</option>
+                             <option value="textarea">Textarea</option>
+                             <option value="select">Select / Dropdown</option>
+                             <option value="radio">Radio Group</option>
+                             <option value="checkbox">Checkbox</option>
+                             <option value="switch">Switch</option>
+                         </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                        <div>
+                            <label className="block text-[10px] text-gray-500 mb-1">Label</label>
+                            <input type="text" className="w-full text-xs border rounded p-1.5" placeholder="Full Name" value={newFieldLabel} onChange={e => setNewFieldLabel(e.target.value)} />
+                        </div>
+                        <div>
+                            <label className="block text-[10px] text-gray-500 mb-1">Key Name (Code)</label>
+                            <input type="text" className="w-full text-xs border rounded p-1.5" placeholder="full_name" value={newFieldName} onChange={e => setNewFieldName(e.target.value)} />
+                        </div>
+                    </div>
+                    {(newFieldType !== 'checkbox' && newFieldType !== 'switch' && newFieldType !== 'radio') && (
+                         <div>
+                            <label className="block text-[10px] text-gray-500 mb-1">Placeholder</label>
+                            <input type="text" className="w-full text-xs border rounded p-1.5" placeholder="Enter value..." value={newFieldPlaceholder} onChange={e => setNewFieldPlaceholder(e.target.value)} />
+                         </div>
+                    )}
+                    {(newFieldType === 'select' || newFieldType === 'radio') && (
+                        <div>
+                             <label className="block text-[10px] text-gray-500 mb-1">Options (Comma separated)</label>
+                             <input type="text" className="w-full text-xs border rounded p-1.5" placeholder="Option 1, Option 2" value={newFieldOptions} onChange={e => setNewFieldOptions(e.target.value)} />
+                        </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                        <input type="checkbox" id="req" className="rounded border-gray-300 text-blue-600" checked={newFieldRequired} onChange={e => setNewFieldRequired(e.target.checked)} />
+                        <label htmlFor="req" className="text-xs text-gray-600">Required Field</label>
+                    </div>
+                    <button onClick={addFormField} className="w-full py-1.5 bg-slate-800 text-white text-xs rounded hover:bg-slate-700 flex items-center justify-center gap-1">
+                        <Plus size={12} /> Add Input
+                    </button>
+                </div>
+            </section>
+            </>
+        )}
         
         {/* Table Properties */}
         {node.type === 'table' && (

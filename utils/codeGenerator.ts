@@ -36,7 +36,7 @@ const styleToTailwind = (style: StyleProps, type: string): string => {
   
   // Flexbox
   const needsFlex = style.flexDirection || style.justifyContent || style.alignItems || style.gap;
-  const isContainer = type === 'container' || type === 'card';
+  const isContainer = type === 'container' || type === 'card' || type === 'form';
   const isButtonWithChildren = type === 'button'; 
 
   if (needsFlex || isContainer || isButtonWithChildren) {
@@ -113,15 +113,27 @@ const collectImports = (node: ComponentNode, imports: Set<string>, components: S
         lucideIcons.add('Search');
         lucideIcons.add('ChevronLeft');
         lucideIcons.add('ChevronRight');
-        
-        // Add icons used in custom columns
         if (node.props.customColumns) {
             node.props.customColumns.forEach((col: any) => {
-                if (col.type === 'icon' && col.content) {
-                    lucideIcons.add(col.content);
-                }
+                if (col.type === 'icon' && col.content) lucideIcons.add(col.content);
             });
         }
+    }
+    
+    // Form Imports
+    if (node.type === 'form') {
+        imports.add('import { z } from "zod"');
+        imports.add('import { useForm } from "react-hook-form"');
+        imports.add('import { zodResolver } from "@hookform/resolvers/zod"');
+        imports.add('import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form"');
+        imports.add('import { Button } from "@/components/ui/button"');
+        imports.add('import { Input } from "@/components/ui/input"');
+        imports.add('import { Textarea } from "@/components/ui/textarea"');
+        imports.add('import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"');
+        imports.add('import { Checkbox } from "@/components/ui/checkbox"');
+        imports.add('import { Switch } from "@/components/ui/switch"');
+        imports.add('import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"');
+        imports.add('import { Loader2 } from "lucide-react"');
     }
     
     // General Icon collection
@@ -137,18 +149,114 @@ const hasTable = (node: ComponentNode): boolean => {
     return node.children.some(hasTable);
 };
 
+const hasForm = (node: ComponentNode): boolean => {
+    if (node.type === 'form') return true;
+    return node.children.some(hasForm);
+};
+
 const generateNode = (node: ComponentNode, indent: number = 0): string => {
   const spaces = '  '.repeat(indent);
   const twClasses = styleToTailwind(node.style, node.type);
   const classNameProp = twClasses ? `className="${twClasses}"` : '';
-  
-  // Event Handlers
   const eventProps = node.events?.onClick ? ` onClick={${node.events.onClick}}` : '';
 
   const wrapLink = (content: string) => {
       if (node.href) return `${spaces}<Link href="${node.href}">\n  ${content}\n${spaces}</Link>`;
       return content;
   };
+
+  // --- Form Generation ---
+  if (node.type === 'form') {
+      const fields = node.props.fields || [];
+      const submitLabel = node.props.submitLabel || 'Submit';
+      const cancelLabel = node.props.cancelLabel || 'Cancel';
+      const clearLabel = node.props.clearLabel || 'Clear';
+      
+      const fieldsJsx = fields.map((f: any) => {
+          let inputEl = '';
+          if (f.type === 'textarea') {
+              inputEl = `<Textarea placeholder="${f.placeholder || ''}" {...field} className="resize-none" />`;
+          } else if (f.type === 'checkbox') {
+              inputEl = `<div className="flex items-center space-x-2">
+${spaces}              <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+${spaces}              <span className="text-sm text-muted-foreground">${f.placeholder || 'Enable'}</span>
+${spaces}            </div>`;
+          } else if (f.type === 'switch') {
+              inputEl = `<div className="flex items-center space-x-2">
+${spaces}              <Switch checked={field.value} onCheckedChange={field.onChange} />
+${spaces}              <span className="text-sm text-muted-foreground">${f.placeholder || 'Enable'}</span>
+${spaces}            </div>`;
+          } else if (f.type === 'radio') {
+              const opts = f.options || ['Option 1', 'Option 2'];
+              const radios = opts.map((o: string) => 
+                  `<div className="flex items-center space-x-2"><RadioGroupItem value="${o}" id="${o}" /><label htmlFor="${o}" className="text-sm">{/* @ts-ignore */ "${o}"}</label></div>`
+              ).join('\n                  ');
+              inputEl = `<RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-1">
+                  ${radios}
+                </RadioGroup>`;
+          } else if (f.type === 'select') {
+              const opts = f.options || ['Option 1', 'Option 2'];
+              const items = opts.map((o: string) => `<SelectItem value="${o}">${o}</SelectItem>`).join('');
+              inputEl = `<Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger><SelectValue placeholder="${f.placeholder || 'Select...'}" /></SelectTrigger>
+                </FormControl>
+                <SelectContent>${items}</SelectContent>
+              </Select>`;
+          } else {
+             inputEl = `<Input type="${f.type}" placeholder="${f.placeholder || ''}" {...field} />`; 
+          }
+
+          // Wrap Checkbox/Switch differently as they handle labels differently in standard Shadcn
+          if (f.type === 'checkbox' || f.type === 'switch') {
+               return `${spaces}        <FormField
+${spaces}          control={form.control}
+${spaces}          name="${f.name}"
+${spaces}          render={({ field }) => (
+${spaces}            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+${spaces}              <FormControl>
+${spaces}                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+${spaces}              </FormControl>
+${spaces}              <div className="space-y-1 leading-none">
+${spaces}                <FormLabel>${f.label}</FormLabel>
+${spaces}              </div>
+${spaces}            </FormItem>
+${spaces}          )}
+${spaces}        />`;
+          }
+
+          return `${spaces}        <FormField
+${spaces}          control={form.control}
+${spaces}          name="${f.name}"
+${spaces}          render={({ field }) => (
+${spaces}            <FormItem>
+${spaces}              <FormLabel>${f.label} ${f.required ? '<span className="text-red-500">*</span>' : ''}</FormLabel>
+${spaces}              <FormControl>
+${spaces}                ${inputEl}
+${spaces}              </FormControl>
+${spaces}              <FormMessage />
+${spaces}            </FormItem>
+${spaces}          )}
+${spaces}        />`;
+      }).join('\n');
+
+      return `
+${spaces}<div ${classNameProp}>
+${spaces}  <Form {...form}>
+${spaces}    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 w-full">
+${fieldsJsx}
+${spaces}      <div className="flex gap-3 pt-4">
+${spaces}        <Button type="submit" disabled={isLoading}>
+${spaces}           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+${spaces}           ${submitLabel}
+${spaces}        </Button>
+${spaces}        <Button type="button" variant="outline" onClick={() => form.reset()}>${clearLabel}</Button>
+${spaces}        <Button type="button" variant="ghost" className="ml-auto text-red-500 hover:text-red-600 hover:bg-red-50">${cancelLabel}</Button>
+${spaces}      </div>
+${spaces}    </form>
+${spaces}  </Form>
+${spaces}</div>`;
+  }
 
   // --- Table Generation ---
   if (node.type === 'table') {
@@ -158,7 +266,6 @@ const generateNode = (node: ComponentNode, indent: number = 0): string => {
       const actionFunc = node.props.actionFunction || 'handleAction';
       const customColumns = node.props.customColumns || [];
       
-      // Legacy Action JSX
       const legacyActionHeader = actionLabel ? `<th className="px-4 py-3 font-semibold text-right">Action</th>` : '';
       const legacyActionButton = actionLabel 
         ? `<td className="px-4 py-3 text-right">
@@ -171,10 +278,8 @@ ${spaces}             </button>
 ${spaces}          </td>`
         : '';
 
-      // Custom Columns Headers JSX
       const customHeaders = customColumns.map((c: any) => `<th className="px-4 py-3 font-semibold text-center">${c.header}</th>`).join(`\n${spaces}          `);
 
-      // Custom Columns Cell JSX
       const customCells = customColumns.map((c: any) => {
           if (c.type === 'button') {
               return `<td className="px-4 py-3 text-center">
@@ -304,8 +409,9 @@ export const generateFullCode = (root: ComponentNode) => {
   const components = new Set<string>();
   const lucideIcons = new Set<string>();
   const useTable = hasTable(root);
+  const useForm = hasForm(root);
 
-  if (useTable) {
+  if (useTable || useForm) {
       imports.add('import { useState, useMemo } from "react"');
   }
 
@@ -316,9 +422,100 @@ export const generateFullCode = (root: ComponentNode) => {
       importBlock += `import { ${Array.from(lucideIcons).join(', ')} } from 'lucide-react';\n`;
   }
 
-  // Logic injection for Table if exists
   let componentLogic = '';
+
+  // --- Form Logic ---
+  if (useForm) {
+      const findFormData = (n: ComponentNode): any | null => {
+          if (n.type === 'form') return n;
+          for (const c of n.children) {
+              const d = findFormData(c);
+              if (d) return d;
+          }
+          return null;
+      };
+      const formNode = findFormData(root);
+      if (formNode) {
+          const fields = formNode.props.fields || [];
+          const mode = formNode.props.mode || 'api';
+          const endpoint = formNode.props.endpoint || '/api/submit';
+
+          // Generate Zod Schema
+          const schemaEntries = fields.map((f: any) => {
+              let val = 'z.string()';
+              if (f.type === 'email') val += '.email()';
+              if (f.type === 'number') val = 'z.coerce.number()';
+              if (f.type === 'checkbox' || f.type === 'switch') val = 'z.boolean().default(false)';
+              
+              // Required Check
+              if (f.type === 'checkbox' || f.type === 'switch') {
+                  // Booleans are usually optional or false by default
+              } else if (f.required) {
+                  val += '.min(1, { message: "This field is required" })';
+              } else {
+                  val += '.optional()';
+              }
+              return `${f.name}: ${val}`;
+          }).join(',\n    ');
+
+          const formSchema = `const formSchema = z.object({\n    ${schemaEntries}\n  })`;
+
+          // Submit Handler
+          let submitLogic = '';
+          if (mode === 'serverAction') {
+              submitLogic = `
+    setIsLoading(true);
+    try {
+      // Security: Authorization check handled in Server Action usually
+      // Role Check: Ensure user has required role on server
+      const result = await ${endpoint}(values); 
+      console.log(result);
+      // handle success
+    } catch (error) {
+      console.error("Submission failed", error);
+    } finally {
+      setIsLoading(false);
+    }`;
+          } else {
+              submitLogic = `
+    setIsLoading(true);
+    try {
+      // Best Practice: CSRF protection is handled by Next.js/Auth library
+      // Auth Check: API route should verify session
+      const res = await fetch("${endpoint}", {
+         method: "POST",
+         body: JSON.stringify(values),
+         headers: { "Content-Type": "application/json" }
+      });
+      if(!res.ok) throw new Error("Failed");
+      // handle success
+    } catch (error) {
+      console.error("API Error", error);
+    } finally {
+      setIsLoading(false);
+    }`;
+          }
+
+          componentLogic += `
+  // --- Form Schema & State ---
+  ${formSchema}
   
+  const [isLoading, setIsLoading] = useState(false);
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      ${fields.map((f: any) => `${f.name}: ${f.type === 'checkbox' || f.type === 'switch' ? 'false' : '""'}`).join(',\n      ')}
+    },
+  });
+
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    ${submitLogic}
+  }
+`;
+      }
+  }
+  
+  // --- Table Logic ---
   if (useTable) {
       const findTableData = (n: ComponentNode): any | null => {
           if (n.type === 'table') return n;
@@ -329,19 +526,20 @@ export const generateFullCode = (root: ComponentNode) => {
           return null;
       }
       const tableNode = findTableData(root);
-      const tableData = tableNode?.props?.data || [];
-      const actionFunc = tableNode?.props?.actionFunction || 'handleAction';
-      const customCols = tableNode?.props?.customColumns || [];
-      
-      // Generate handler functions for custom columns
-      const customHandlers = customCols.map((c: any) => {
-          if (c.actionFunction) {
-              return `const ${c.actionFunction} = (row: any) => {\n    console.log("${c.header} clicked", row);\n    alert("${c.header}: " + row.name);\n  };`;
-          }
-          return '';
-      }).join('\n  ');
-      
-      componentLogic = `
+      if (tableNode) {
+          const tableData = tableNode.props.data || [];
+          const actionFunc = tableNode.props.actionFunction || 'handleAction';
+          const customCols = tableNode.props.customColumns || [];
+          
+          const customHandlers = customCols.map((c: any) => {
+              if (c.actionFunction) {
+                  return `const ${c.actionFunction} = (row: any) => {\n    console.log("${c.header} clicked", row);\n    alert("${c.header}: " + row.name);\n  };`;
+              }
+              return '';
+          }).join('\n  ');
+          
+          componentLogic += `
+  // --- Table State ---
   const tableData = ${JSON.stringify(tableData, null, 2)};
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -366,6 +564,7 @@ export const generateFullCode = (root: ComponentNode) => {
 
   ${customHandlers}
       `;
+      }
   }
 
   return `import React from 'react';

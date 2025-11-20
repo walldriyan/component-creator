@@ -226,21 +226,34 @@ export default function App() {
               backgroundColor: '#ffffff',
               boxShadow: 'shadow-md'
           };
-          // Mock Data for Table
           base.props.data = [
-              { id: 1, name: 'John Doe', email: 'john@example.com', role: 'Admin', status: 'Active' },
-              { id: 2, name: 'Jane Smith', email: 'jane@example.com', role: 'User', status: 'Inactive' },
-              { id: 3, name: 'Robert Brown', email: 'robert@example.com', role: 'Editor', status: 'Active' },
-              { id: 4, name: 'Emily Davis', email: 'emily@example.com', role: 'User', status: 'Active' },
-              { id: 5, name: 'Michael Wilson', email: 'michael@example.com', role: 'User', status: 'Inactive' },
-              { id: 6, name: 'Sarah Johnson', email: 'sarah@example.com', role: 'Admin', status: 'Active' },
-              { id: 7, name: 'David Lee', email: 'david@example.com', role: 'Editor', status: 'Active' },
-              { id: 8, name: 'Laura White', email: 'laura@example.com', role: 'User', status: 'Inactive' },
-              { id: 9, name: 'Daniel Martin', email: 'daniel@example.com', role: 'User', status: 'Active' },
-              { id: 10, name: 'Olivia Moore', email: 'olivia@example.com', role: 'Editor', status: 'Active' },
-              { id: 11, name: 'James Taylor', email: 'james@example.com', role: 'User', status: 'Inactive' },
-              { id: 12, name: 'Sophia Anderson', email: 'sophia@example.com', role: 'Admin', status: 'Active' },
+              { id: 1, name: 'John Doe', email: 'john@example.com', role: 'Admin' },
+              { id: 2, name: 'Jane Smith', email: 'jane@example.com', role: 'User' }
           ];
+      } else if (type === 'form') {
+          base.name = 'Smart Form';
+          base.style = {
+              ...base.style,
+              width: '100%',
+              padding: '24px',
+              borderWidth: '1px',
+              backgroundColor: '#ffffff',
+              borderRadius: '8px',
+              flexDirection: 'column',
+              gap: '16px'
+          };
+          base.props = {
+              mode: 'serverAction', // 'api' or 'serverAction'
+              endpoint: 'submitForm',
+              submitLabel: 'Submit',
+              cancelLabel: 'Cancel',
+              clearLabel: 'Clear',
+              fields: [
+                  { id: 'f1', type: 'text', name: 'fullName', label: 'Full Name', placeholder: 'John Doe', required: true },
+                  { id: 'f2', type: 'email', name: 'email', label: 'Email Address', placeholder: 'john@example.com', required: true },
+                  { id: 'f3', type: 'select', name: 'role', label: 'User Role', placeholder: 'Select role', required: true, options: ['User', 'Admin', 'Editor'] }
+              ]
+          };
       }
 
       // Templates with full children structure

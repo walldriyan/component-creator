@@ -1,7 +1,7 @@
 
 import React, { MouseEvent, useRef, useState, useLayoutEffect, useEffect, useMemo } from 'react';
 import { ComponentNode } from '../types';
-import { Settings, Home, User, Bell, Search, Menu, Star, Heart, Share, ArrowRight, Box, Check, X, Layout, Maximize2, Scaling, Copy, CreditCard, Link as LinkIcon, Image as ImageIcon, Square, Minimize2, MoveHorizontal, MoveVertical, ChevronDown, ArrowUp, ArrowDown, AlignCenter, AlignLeft, ArrowRightFromLine, ArrowDownFromLine, Trash2, Minimize, Maximize, ChevronLeft, ChevronRight, Edit, Eye, MoreHorizontal, Plus, Download, Upload } from 'lucide-react';
+import { Settings, Home, User, Bell, Search, Menu, Star, Heart, Share, ArrowRight, Box, Check, X, Layout, Maximize2, Scaling, Copy, CreditCard, Link as LinkIcon, Image as ImageIcon, Square, Minimize2, MoveHorizontal, MoveVertical, ChevronDown, ArrowUp, ArrowDown, AlignCenter, AlignLeft, ArrowRightFromLine, ArrowDownFromLine, Trash2, Minimize, Maximize, ChevronLeft, ChevronRight, Edit, Eye, MoreHorizontal, Plus, Download, Upload, FileText } from 'lucide-react';
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -12,7 +12,7 @@ function cn(...inputs: ClassValue[]) {
 // Expanded Icon Map for more options
 const IconMap: Record<string, any> = {
   Home, User, Settings, Bell, Search, Menu, Star, Heart, Share, ArrowRight, Box, Check, X, Layout,
-  Edit, Eye, Trash2, MoreHorizontal, Plus, Download, Upload, ChevronRight, ChevronLeft
+  Edit, Eye, Trash2, MoreHorizontal, Plus, Download, Upload, ChevronRight, ChevronLeft, FileText
 };
 
 interface CanvasProps {
@@ -274,6 +274,62 @@ const TableRenderer = ({ node }: { node: ComponentNode }) => {
     );
 };
 
+// --- Form Renderer ---
+const FormRenderer = ({ node }: { node: ComponentNode }) => {
+    const fields = node.props.fields || [];
+    const mode = node.props.mode || 'api';
+
+    return (
+        <div className="w-full flex flex-col gap-4 pointer-events-none">
+             <div className="text-xs text-blue-600 font-mono mb-2 bg-blue-50 p-2 rounded border border-blue-100 inline-block w-fit">
+                Mode: {mode === 'serverAction' ? 'Server Action' : 'API Route'} 
+                <span className="ml-2 text-gray-400">|</span> 
+                <span className="ml-2">Dest: {node.props.endpoint}</span>
+             </div>
+
+            {fields.map((f: any) => (
+                <div key={f.id} className="flex flex-col gap-2">
+                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-slate-700">
+                        {f.label} {f.required && <span className="text-red-500">*</span>}
+                    </label>
+                    
+                    {f.type === 'textarea' ? (
+                        <textarea placeholder={f.placeholder} className="flex min-h-[80px] w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 resize-none" />
+                    ) : f.type === 'select' ? (
+                        <div className="relative">
+                            <div className="flex h-10 w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500">
+                                {f.placeholder || 'Select...'} <ChevronDown size={16} />
+                            </div>
+                        </div>
+                    ) : f.type === 'checkbox' || f.type === 'switch' ? (
+                        <div className="flex items-center gap-2">
+                             <div className={`h-4 w-4 rounded border border-slate-900 flex items-center justify-center ${f.type === 'switch' ? 'rounded-full w-8 h-4 border-0 bg-slate-200' : ''}`}></div>
+                             <span className="text-xs text-gray-500">{f.placeholder || 'Enable'}</span>
+                        </div>
+                    ) : f.type === 'radio' ? (
+                        <div className="flex gap-4">
+                            {(f.options || ['Option 1', 'Option 2']).map((opt: string, i: number) => (
+                                <div key={i} className="flex items-center gap-1">
+                                    <div className="w-3 h-3 rounded-full border border-slate-400"></div>
+                                    <span className="text-sm text-slate-600">{opt}</span>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <input type={f.type} placeholder={f.placeholder} className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50" />
+                    )}
+                </div>
+            ))}
+
+            <div className="flex items-center gap-3 mt-4 pt-2 border-t border-gray-100">
+                <button className="bg-slate-900 text-white px-4 py-2 rounded-md text-sm font-medium">{node.props.submitLabel || 'Submit'}</button>
+                <button className="bg-white border border-slate-200 text-slate-900 px-4 py-2 rounded-md text-sm font-medium">{node.props.clearLabel || 'Clear'}</button>
+                <button className="text-red-600 px-4 py-2 rounded-md text-sm font-medium hover:bg-red-50 ml-auto">{node.props.cancelLabel || 'Cancel'}</button>
+            </div>
+        </div>
+    );
+};
+
 const CanvasRenderer: React.FC<CanvasProps> = React.memo(({ node, selectedId, onSelect, onDrop, onDelete, onResize, onUpdate, onDuplicate, onWrap, index = 0, parentId = null }) => {
   const isSelected = selectedId === node.id;
   const elementRef = useRef<HTMLDivElement>(null);
@@ -342,7 +398,7 @@ const CanvasRenderer: React.FC<CanvasProps> = React.memo(({ node, selectedId, on
     const height = rect.height;
     const relativeY = e.clientY - rect.top;
     
-    const isLeaf = ['text', 'image', 'input', 'icon', 'switch', 'checkbox', 'divider', 'textarea', 'select', 'table'].includes(node.type);
+    const isLeaf = ['text', 'image', 'input', 'icon', 'switch', 'checkbox', 'divider', 'textarea', 'select', 'table', 'form'].includes(node.type);
     const canAcceptChildren = !isLeaf;
     
     let newPosition: 'top' | 'bottom' | 'inside' | null = null;
@@ -445,6 +501,7 @@ const CanvasRenderer: React.FC<CanvasProps> = React.memo(({ node, selectedId, on
       if (node.type === 'icon' && node.iconName) return React.createElement(IconMap[node.iconName] || Box, { size: 24, className: "pointer-events-none" });
       
       if (node.type === 'table') return <TableRenderer node={node} />;
+      if (node.type === 'form') return <FormRenderer node={node} />;
 
       return null;
   };
