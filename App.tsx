@@ -1,31 +1,39 @@
 
+
 import React, { useState, useCallback, useEffect } from 'react';
 import ComponentLibrary from './components/ComponentLibrary';
 import CanvasRenderer from './components/Canvas';
 import PropertiesPanel from './components/PropertiesPanel';
-import { ComponentNode, initialCanvas, ComponentType, LibraryType } from './types';
-import { Code, Sparkles, Download, X, PanelLeftClose, PanelLeftOpen, Undo2, Redo2 } from 'lucide-react';
+import Header from './components/Header';
+import { ComponentNode, initialCanvas, ComponentType, LibraryType, FrameworkType } from './types';
+import { Download, X, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { generateFullCode } from './utils/codeGenerator';
+import { generateFlutterCode } from './utils/flutterGenerator';
 import { generateLayoutWithGemini } from './services/geminiService';
 
 export default function App() {
   // History State
   const [history, setHistory] = useState<ComponentNode[]>([{
       ...initialCanvas,
-      style: { ...initialCanvas.style, backgroundColor: '#ffffff' } // Root is White
+      style: { ...initialCanvas.style, backgroundColor: '#ffffff' }
   }]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
   const [rootNode, setRootNodeState] = useState<ComponentNode>({
       ...initialCanvas,
-      style: { ...initialCanvas.style, backgroundColor: '#ffffff' } // Root is White
+      style: { ...initialCanvas.style, backgroundColor: '#ffffff' }
   });
+  
   const [selectedId, setSelectedId] = useState<string | null>('root');
   const [showCode, setShowCode] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
   const [showAiModal, setShowAiModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  
+  // New State for Framework and Flutter Options
+  const [framework, setFramework] = useState<FrameworkType>('nextjs');
+  const [flutterStateful, setFlutterStateful] = useState(false);
 
   // Wrapper to update root node and push to history
   const updateRootNode = (newNode: ComponentNode | ((prev: ComponentNode) => ComponentNode), addToHistory = true) => {
@@ -59,19 +67,6 @@ export default function App() {
       setRootNodeState(history[newIndex]);
     }
   };
-
-  // Sync rootNode with history if history changes externally (though we control it mainly via updateRootNode)
-  useEffect(() => {
-      const handleKeyDown = (e: KeyboardEvent) => {
-          if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
-              if (e.shiftKey) handleRedo();
-              else handleUndo();
-          }
-      };
-      window.addEventListener('keydown', handleKeyDown);
-      return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [historyIndex, history]);
-
 
   // Recursive finder
   const findNode = useCallback((node: ComponentNode, id: string): ComponentNode | null => {
@@ -117,379 +112,261 @@ export default function App() {
   };
 
   const createNewNode = (type: string, parentId: string): ComponentNode => {
+      const id = genId();
+      
       const base: ComponentNode = {
-        id: genId(),
-        type: type as ComponentType,
-        name: type,
-        library: 'radix', // Default set to Radix
+        id,
+        type: (type === 'sidebar' || type === 'navbar') ? 'container' : type as ComponentType,
+        name: type.charAt(0).toUpperCase() + type.slice(1),
+        library: 'radix',
         props: {},
         style: {
-            padding: '0px', 
-            overflow: 'hidden',
+            position: 'relative',
+            flexDirection: 'column',
+            padding: '0px',
             gap: '10px',
-            borderColor: '#e2e8f0',
-            borderRadius: '6px',
+            // Default sensible styles
+            width: 'auto',
+            height: 'auto',
         },
         content: '',
         children: [],
         parentId
       };
 
-      // Specific defaults
-      if (type === 'container') {
-          base.style = { 
-              ...base.style, 
-              width: '100%', 
-              minHeight: '100px', 
-              backgroundColor: '#f8fafc', 
-              padding: '16px', 
-              borderWidth: '1px', 
-              borderStyle: 'dashed', 
-              flexDirection: 'column' 
-          };
-      } else if (type === 'card') {
-           base.style = { 
-               ...base.style, 
-               width: '100%', 
-               minHeight: '150px', 
-               backgroundColor: '#ffffff', 
-               padding: '0px', 
-               borderWidth: '1px', 
-               borderStyle: 'solid', 
-               flexDirection: 'column',
-               boxShadow: 'shadow-sm'
-           };
-      } else if (type === 'button') {
-          base.content = 'Button';
-          base.style = { 
-            ...base.style, 
-            width: 'auto', 
-            height: 'auto', 
-            backgroundColor: '#1e293b', 
-            color: '#ffffff', 
-            padding: '8px 16px', 
-            borderRadius: '6px',
-            cursor: 'pointer'
-          };
-      } else if (type === 'text') {
-          base.content = 'Text block';
-          base.style = { ...base.style, width: 'auto' };
-      } else if (type === 'input') {
-          base.content = 'Enter text...';
-          base.style = { ...base.style, width: '100%', height: '40px', borderWidth: '1px', padding: '8px' };
-      } else if (type === 'textarea') {
-          base.content = 'Type your message here.';
-          base.style = { ...base.style, width: '100%', height: 'auto', minHeight: '80px', borderWidth: '1px', padding: '8px' };
-      } else if (type === 'select') {
-          base.content = 'Select an option';
-          base.style = { ...base.style, width: '200px', height: '40px', borderWidth: '1px', padding: '8px' };
-      } else if (type === 'checkbox') {
-          base.content = 'Checkbox Label';
-          base.style = { 
-            ...base.style, 
-            width: 'auto', 
-            height: 'auto',
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: '8px'
-          };
-          base.props.checked = false;
-      } else if (type === 'switch') {
-          base.content = 'Switch Label';
-          base.style = { 
-            ...base.style, 
-            width: 'auto', 
-            height: 'auto',
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: '8px'
-          };
-          base.props.checked = false;
-      } else if (type === 'divider') {
-          base.style = { 
-              ...base.style, 
-              width: '100%', 
-              height: '1px', 
-              backgroundColor: '#cbd5e1', 
-              margin: '10px 0',
-              minHeight: '1px'
-          };
-      } else if (type === 'table') {
-          base.style = {
-              ...base.style,
-              width: '100%',
-              height: 'auto',
-              padding: '0px',
-              borderWidth: '1px',
-              borderColor: '#e2e8f0',
-              borderRadius: '8px',
-              backgroundColor: '#ffffff',
-              boxShadow: 'shadow-md'
-          };
-          base.props.data = [
-              { id: 1, name: 'John Doe', email: 'john@example.com', role: 'Admin' },
-              { id: 2, name: 'Jane Smith', email: 'jane@example.com', role: 'User' }
-          ];
-      } else if (type === 'form') {
-          base.name = 'Smart Form';
-          base.style = {
-              ...base.style,
-              width: '100%',
-              padding: '24px',
-              borderWidth: '1px',
-              backgroundColor: '#ffffff',
-              borderRadius: '8px',
-              flexDirection: 'column',
-              gap: '16px'
-          };
-          base.props = {
-              mode: 'serverAction', // 'api' or 'serverAction'
-              endpoint: 'submitForm',
-              submitLabel: 'Submit',
-              cancelLabel: 'Cancel',
-              clearLabel: 'Clear',
-              fields: [
-                  { id: 'f1', type: 'text', name: 'fullName', label: 'Full Name', placeholder: 'John Doe', required: true },
-                  { id: 'f2', type: 'email', name: 'email', label: 'Email Address', placeholder: 'john@example.com', required: true },
-                  { id: 'f3', type: 'select', name: 'role', label: 'User Role', placeholder: 'Select role', required: true, options: ['User', 'Admin', 'Editor'] }
-              ]
-          };
-      } else if (type === 'avatarGroup') {
-          base.name = 'Avatar Group';
-          base.style = { ...base.style, flexDirection: 'row', alignItems: 'center', width: 'auto' };
-          base.props = {
-              max: 4,
-              images: [
-                  'https://i.pravatar.cc/150?img=1',
-                  'https://i.pravatar.cc/150?img=2',
-                  'https://i.pravatar.cc/150?img=3',
-                  'https://i.pravatar.cc/150?img=4',
-                  'https://i.pravatar.cc/150?img=5',
-                  'https://i.pravatar.cc/150?img=6'
-              ]
-          };
-      } else if (type === 'interaction') {
-          base.name = 'Social Interactions';
-          base.style = { ...base.style, flexDirection: 'row', alignItems: 'center', gap: '16px', width: 'auto' };
-          base.props = {
-              likes: 120,
-              dislikes: 5,
-              views: 1500,
-              liked: false,
-              disliked: false
-          };
-      } else if (type === 'tabs') {
-          base.name = 'Tabs';
-          base.style = { ...base.style, width: '100%', height: 'auto', flexDirection: 'column' };
-          base.props = {
-              items: [
-                  { id: 'account', label: 'Account', icon: 'User', content: '<p>Manage your account settings here.</p>' },
-                  { id: 'security', label: 'Security', icon: 'Lock', content: '<p>Security preferences and 2FA.</p>' },
-                  { id: 'notifications', label: 'Notifications', icon: 'Bell', content: '<p>Email and push notification settings.</p>' }
-              ],
-              activeTab: 'account'
-          };
-      } else if (type === 'list') {
-          base.name = 'Dynamic List';
-          base.style = { ...base.style, width: '100%', flexDirection: 'column', backgroundColor: '#ffffff', borderWidth: '1px', borderRadius: '8px', padding: '16px' };
-          base.props = {
-              itemsPerPage: 5,
-              pagination: true,
-              items: [
-                  { id: 1, title: 'Project A Update', description: 'Daily standup notes', icon: 'FileText' },
-                  { id: 2, title: 'Client Meeting', description: 'Discuss requirements', icon: 'Users' },
-                  { id: 3, title: 'Code Review', description: 'PR #123 needs review', icon: 'Code' },
-                  { id: 4, title: 'Deployment', description: 'Deploy to production', icon: 'Server' },
-                  { id: 5, title: 'Bug Fix', description: 'Fix login issue', icon: 'Bug' },
-                  { id: 6, title: 'Design Sync', description: 'Sync with UI team', icon: 'PenTool' },
-              ]
-          };
-      } else if (type === 'dropdown') {
-          base.name = 'Dropdown Menu';
-          base.style = { ...base.style, width: 'auto', position: 'relative' };
-          base.props = {
-              label: 'Options',
-              items: [
-                  { id: 'edit', label: 'Edit', icon: 'Edit' },
-                  { id: 'duplicate', label: 'Duplicate', icon: 'Copy' },
-                  { id: 'delete', label: 'Delete', icon: 'Trash', danger: true }
-              ]
-          };
+      switch (type) {
+        case 'container':
+            base.style = { 
+                ...base.style, 
+                width: '100%', 
+                minHeight: '100px', 
+                backgroundColor: '#f8fafc', 
+                padding: '16px', 
+                borderWidth: '1px', 
+                borderStyle: 'dashed', 
+                borderColor: '#cbd5e1' 
+            };
+            break;
+
+        case 'card':
+            base.style = { 
+                ...base.style, 
+                width: '100%', 
+                minHeight: '150px', 
+                backgroundColor: '#ffffff', 
+                padding: '20px', 
+                borderRadius: '8px', 
+                boxShadow: 'shadow-md', 
+                borderWidth: '1px', 
+                borderColor: '#e2e8f0' 
+            };
+            break;
+
+        case 'text':
+            base.content = 'Text Block';
+            base.style = { ...base.style, width: 'auto' };
+            break;
+
+        case 'button':
+             base.content = 'Button';
+             base.style = { ...base.style, width: 'auto', backgroundColor: '#1e293b', color: '#ffffff', padding: '8px 16px', borderRadius: '6px' };
+             break;
+
+        case 'image':
+             base.content = 'https://picsum.photos/300/200';
+             base.style = { ...base.style, width: '100%', height: '200px', borderRadius: '8px' };
+             break;
+
+        case 'input':
+             base.content = 'Enter text...';
+             base.style = { ...base.style, width: '100%', padding: '8px', borderWidth: '1px', borderRadius: '6px', borderColor: '#cbd5e1' };
+             break;
+             
+        case 'textarea':
+             base.content = 'Enter description...';
+             base.style = { ...base.style, width: '100%', height: '80px', padding: '8px', borderWidth: '1px', borderRadius: '6px', borderColor: '#cbd5e1' };
+             break;
+
+        case 'select':
+             base.content = 'Select option';
+             base.style = { ...base.style, width: '100%', padding: '8px', borderWidth: '1px', borderRadius: '6px', borderColor: '#cbd5e1', backgroundColor: '#ffffff' };
+             break;
+
+        case 'checkbox':
+             base.content = 'Enable Option'; // Label
+             base.style = { ...base.style, flexDirection: 'row', alignItems: 'center', gap: '8px', width: 'auto' };
+             base.props.checked = true;
+             break;
+             
+        case 'switch':
+             base.content = 'Toggle Mode'; // Label
+             base.style = { ...base.style, flexDirection: 'row', alignItems: 'center', gap: '8px', width: 'auto' };
+             base.props.checked = true;
+             break;
+
+        case 'divider':
+             base.style = { ...base.style, width: '100%', height: '1px', backgroundColor: '#e2e8f0', margin: '10px 0' };
+             break;
+             
+        case 'icon':
+             base.iconName = 'Star';
+             base.style = { ...base.style, color: '#64748b' };
+             break;
+
+        case 'tabs':
+             base.props.items = [
+                 { id: 'tab1', label: 'Account', icon: 'User', content: '<p>Manage your account settings here.</p>' },
+                 { id: 'tab2', label: 'Password', icon: 'Lock', content: '<p>Change your password securely.</p>' },
+                 { id: 'tab3', label: 'Notifications', icon: 'Bell', content: '<p>Configure your notification preferences.</p>' }
+             ];
+             base.props.activeTab = 'tab1';
+             base.style = { ...base.style, width: '100%' };
+             break;
+
+        case 'accordion':
+             base.props.items = [
+                 { id: 'item1', title: 'Is it accessible?', icon: 'Check', content: 'Yes. It adheres to the WAI-ARIA design pattern.' },
+                 { id: 'item2', title: 'Is it styled?', icon: 'Palette', content: 'Yes. It comes with default styles that matches the other components.' },
+                 { id: 'item3', title: 'Is it animated?', icon: 'Sparkles', content: 'Yes. It uses CSS transitions for smooth expansion.' }
+             ];
+             base.style = { ...base.style, width: '100%' };
+             break;
+
+        case 'list':
+             base.props.items = [
+                 { id: '1', title: 'Inbox', description: '12 Unread messages', icon: 'Box' },
+                 { id: '2', title: 'Sent', description: '5 pending items', icon: 'ArrowRight' },
+                 { id: '3', title: 'Junk', description: 'Cleared', icon: 'Trash2' }
+             ];
+             base.style = { ...base.style, width: '100%' };
+             break;
+             
+        case 'dropdown':
+             base.props.label = "Options";
+             base.props.items = [
+                 { id: '1', label: 'Profile', icon: 'User' },
+                 { id: '2', label: 'Settings', icon: 'Settings' },
+                 { id: '3', label: 'Logout', icon: 'LogOut', danger: true }
+             ];
+             base.style = { ...base.style, width: 'auto' };
+             break;
+
+        case 'avatarGroup':
+             base.props.images = [
+                 "https://i.pravatar.cc/150?u=a042581f4e29026024d",
+                 "https://i.pravatar.cc/150?u=a04258a2462d826712d",
+                 "https://i.pravatar.cc/150?u=a042581f4e29026704d",
+                 "https://i.pravatar.cc/150?u=a04258114e29026302d"
+             ];
+             base.props.max = 3;
+             base.style = { ...base.style, width: 'auto', flexDirection: 'row' };
+             break;
+
+        case 'table':
+            base.props.data = [
+                { id: 1, name: 'John Doe', role: 'Admin', status: 'Active' },
+                { id: 2, name: 'Jane Smith', role: 'User', status: 'Active' },
+                { id: 3, name: 'Bob Johnson', role: 'Guest', status: 'Inactive' }
+            ];
+            base.props.actionLabel = "Edit";
+            base.style = { ...base.style, width: '100%', overflow: 'auto' };
+            break;
+            
+        case 'form':
+            base.props.submitLabel = "Submit Request";
+            base.props.fields = [
+                { id: 'f1', name: 'email', label: 'Email Address', type: 'email', placeholder: 'john@example.com', required: true },
+                { id: 'f2', name: 'subject', label: 'Subject', type: 'text', placeholder: 'How can we help?', required: true },
+                { id: 'f3', name: 'message', label: 'Message', type: 'textarea', placeholder: 'Describe your issue...', required: true }
+            ];
+            base.style = { ...base.style, width: '100%' };
+            break;
+
+        case 'interaction':
+            base.props.likes = 124;
+            base.props.dislikes = 12;
+            base.props.views = 5400;
+            base.style = { ...base.style, width: 'auto' };
+            break;
+
+        // --- Presets ---
+        case 'sidebar':
+             base.name = 'Sidebar Preset';
+             base.style = { 
+                 ...base.style, 
+                 width: '250px', 
+                 height: '100%', 
+                 backgroundColor: '#ffffff', 
+                 borderRight: '1px', 
+                 borderColor: '#e2e8f0', 
+                 padding: '20px',
+                 alignItems: 'flex-start'
+             };
+             // Manually constructing children for the preset
+             const logo = createNewNode('text', id);
+             logo.content = "Dashboard Pro";
+             logo.style = { ...logo.style, fontSize: '20px', fontWeight: 'bold', marginBottom: '20px', color: '#1e293b' };
+             
+             const navList = createNewNode('list', id);
+             navList.props.items = [
+                 { id: 'p1', title: 'Overview', icon: 'Layout' },
+                 { id: 'p2', title: 'Analytics', icon: 'BarChart' },
+                 { id: 'p3', title: 'Customers', icon: 'Users' },
+                 { id: 'p4', title: 'Settings', icon: 'Settings' }
+             ];
+             
+             const userProfile = createNewNode('container', id);
+             userProfile.style = { ...userProfile.style, marginTop: 'auto', flexDirection: 'row', alignItems: 'center', gap: '10px', padding: '10px', backgroundColor: '#f8fafc', borderRadius: '8px', width: '100%', minHeight: 'auto' };
+             
+             const avatar = createNewNode('image', userProfile.id);
+             avatar.content = "https://i.pravatar.cc/150?u=a042581f4e29026024d";
+             avatar.style = { ...avatar.style, width: '40px', height: '40px', borderRadius: '20px' };
+             
+             const userName = createNewNode('text', userProfile.id);
+             userName.content = "John Admin";
+             userName.style = { ...userName.style, fontSize: '14px', fontWeight: '500' };
+             
+             userProfile.children = [avatar, userName];
+             base.children = [logo, navList, userProfile];
+             break;
+
+        case 'navbar':
+             base.name = 'Navbar Preset';
+             base.style = { 
+                 ...base.style, 
+                 width: '100%', 
+                 height: '64px', 
+                 backgroundColor: '#ffffff', 
+                 borderBottom: '1px', 
+                 borderColor: '#e2e8f0', 
+                 flexDirection: 'row', 
+                 alignItems: 'center', 
+                 justifyContent: 'space-between', 
+                 padding: '0 24px'
+             };
+             
+             const navLogo = createNewNode('text', id);
+             navLogo.content = "MyApp";
+             navLogo.style = { ...navLogo.style, fontSize: '18px', fontWeight: 'bold', color: '#0f172a' };
+             
+             const linksContainer = createNewNode('container', id);
+             linksContainer.style = { ...linksContainer.style, flexDirection: 'row', gap: '20px', alignItems: 'center', width: 'auto', minHeight: 'auto', backgroundColor: 'transparent', borderWidth: '0' };
+             
+             ['Features', 'Pricing', 'About'].forEach(text => {
+                 const link = createNewNode('text', linksContainer.id);
+                 link.content = text;
+                 link.style = { ...link.style, fontSize: '14px', color: '#64748b', cursor: 'pointer' };
+                 linksContainer.children.push(link);
+             });
+             
+             const ctaBtn = createNewNode('button', id);
+             ctaBtn.content = "Get Started";
+             
+             base.children = [navLogo, linksContainer, ctaBtn];
+             break;
       }
-
-      // Templates with full children structure
-      if (type === 'sidebar') {
-           const sidebarId = genId();
-           
-           const createMenuItem = (label: string, icon: string, isActive: boolean = false): ComponentNode => {
-               const itemId = genId();
-               return {
-                   id: itemId,
-                   type: 'container',
-                   name: 'Menu Item',
-                   library: 'radix',
-                   props: {},
-                   style: { 
-                       width: '100%', 
-                       padding: '10px', 
-                       borderRadius: '6px', 
-                       flexDirection: 'row', 
-                       alignItems: 'center', 
-                       gap: '12px', 
-                       backgroundColor: isActive ? '#eff6ff' : 'transparent', 
-                       color: isActive ? '#2563eb' : '#64748b',
-                       cursor: 'pointer' 
-                   },
-                   children: [
-                       { id: genId(), type: 'icon', name: 'Icon', library: 'radix', props: {}, style: { color: isActive ? '#2563eb' : 'inherit' }, iconName: icon, children: [], parentId: itemId },
-                       { id: genId(), type: 'text', name: 'Label', library: 'radix', props: {}, style: { fontSize: '14px', fontWeight: '500', color: 'inherit' }, content: label, children: [], parentId: itemId }
-                   ],
-                   parentId: sidebarId
-               };
-           };
-
-           const sidebar: ComponentNode = { 
-               ...base, 
-               id: sidebarId,
-               type: 'container', 
-               name: 'Sidebar', 
-               style: { 
-                   width: '260px', 
-                   height: '100%', 
-                   backgroundColor: '#ffffff', 
-                   borderRight: '1px solid #e2e8f0', 
-                   padding: '24px', 
-                   flexDirection: 'column', 
-                   gap: '8px' 
-               },
-               children: [
-                   {
-                       id: genId(),
-                       type: 'text',
-                       name: 'Brand',
-                       library: 'radix',
-                       props: {},
-                       style: { fontSize: '20px', fontWeight: 'bold', marginBottom: '24px', color: '#0f172a' },
-                       content: 'Dashboard',
-                       children: [],
-                       parentId: sidebarId
-                   },
-                   createMenuItem('Home', 'Home', true), 
-                   createMenuItem('Profile', 'User'),
-                   createMenuItem('Settings', 'Settings'),
-                   {
-                        id: genId(),
-                        type: 'container',
-                        name: 'Spacer',
-                        library: 'radix',
-                        props: {},
-                        style: { flexGrow: 1 },
-                        children: [],
-                        parentId: sidebarId
-                   },
-                   {
-                       id: genId(),
-                       type: 'divider',
-                       name: 'Divider',
-                       library: 'radix',
-                       props: {},
-                       style: { width: '100%', height: '1px', backgroundColor: '#e2e8f0', margin: '10px 0' },
-                       children: [],
-                       parentId: sidebarId
-                   },
-                   {
-                       ...createMenuItem('Log Out', 'ArrowRight'),
-                   }
-               ]
-           };
-           
-           const setParentIds = (node: ComponentNode, pid: string | null) => {
-               node.parentId = pid;
-               node.children.forEach(c => setParentIds(c, node.id));
-           };
-           setParentIds(sidebar, parentId);
-
-           return sidebar;
-      }
-
-      if (type === 'navbar') {
-           const navbarId = genId();
-           const navbar: ComponentNode = { 
-               ...base, 
-               id: navbarId,
-               type: 'container', 
-               name: 'Navbar', 
-               style: { 
-                   width: '100%', 
-                   height: '64px', 
-                   backgroundColor: '#ffffff', 
-                   borderBottom: '1px solid #e2e8f0', 
-                   padding: '0 24px', 
-                   flexDirection: 'row', 
-                   alignItems: 'center', 
-                   justifyContent: 'space-between' 
-               },
-               children: [
-                   // Logo Section
-                   {
-                       id: genId(),
-                       type: 'container',
-                       name: 'Logo Group',
-                       library: 'radix',
-                       props: {},
-                       style: { flexDirection: 'row', alignItems: 'center', gap: '10px' },
-                       children: [
-                            { id: genId(), type: 'icon', name: 'Logo Icon', library: 'radix', props: {}, style: { color: '#2563eb' }, iconName: 'Box', children: [], parentId: '' },
-                            { id: genId(), type: 'text', name: 'Brand', library: 'radix', props: {}, style: { fontSize: '18px', fontWeight: 'bold', color: '#0f172a' }, content: 'Brand', children: [], parentId: '' }
-                       ],
-                       parentId: navbarId
-                   },
-                   // Nav Links
-                   {
-                       id: genId(),
-                       type: 'container',
-                       name: 'Links Group',
-                       library: 'radix',
-                       props: {},
-                       style: { flexDirection: 'row', alignItems: 'center', gap: '24px' },
-                       children: [
-                           { id: genId(), type: 'text', name: 'Link', library: 'radix', props: {}, style: { fontSize: '14px', fontWeight: '500', color: '#0f172a', cursor: 'pointer' }, content: 'Overview', children: [], parentId: '' }, 
-                           { id: genId(), type: 'text', name: 'Link', library: 'radix', props: {}, style: { fontSize: '14px', fontWeight: '500', color: '#64748b', cursor: 'pointer' }, content: 'Customers', children: [], parentId: '' },
-                           { 
-                               id: genId(), 
-                               type: 'button', 
-                               name: 'Action', 
-                               library: 'radix', 
-                               props: { variant: 'default' }, 
-                               style: { 
-                                 height: '36px', 
-                                 borderRadius: '6px', 
-                                 backgroundColor: '#1e293b', 
-                                 color: 'white', 
-                                 padding: '0 16px',
-                                 cursor: 'pointer' 
-                               }, 
-                               content: 'Log In', 
-                               children: [], 
-                               parentId: '' 
-                           }
-                       ],
-                       parentId: navbarId
-                   }
-               ]
-           };
-           
-           const setParentIds = (node: ComponentNode, pid: string | null) => {
-               node.parentId = pid;
-               node.children.forEach(c => setParentIds(c, node.id));
-           };
-           setParentIds(navbar, parentId);
-           
-           return navbar;
-      }
-
       return base;
-  }
+  };
 
   const handleDrop = (e: React.DragEvent, targetId: string, index?: number) => {
     const type = e.dataTransfer.getData('componentType');
@@ -587,53 +464,23 @@ export default function App() {
      } catch (e) { console.error(e); } finally { setIsGenerating(false); }
   };
 
-  useEffect(() => {
-      const handleKeyDown = (e: KeyboardEvent) => {
-          if (e.key === 'Delete' || e.key === 'Backspace') {
-              if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName || '')) return;
-              if (selectedId && selectedId !== 'root') handleDelete(selectedId);
-          }
-      };
-      window.addEventListener('keydown', handleKeyDown);
-      return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedId]);
-
   return (
     <div className="flex h-screen flex-col bg-white text-slate-900 font-sans">
-      <header className="h-14 border-b border-slate-200 bg-white flex items-center justify-between px-4 z-30 relative">
-        <div className="flex items-center gap-2">
-           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">UI</div>
-           <h1 className="font-semibold text-lg tracking-tight">Builder Pro</h1>
-           
-           {/* Undo / Redo Buttons */}
-           <div className="flex items-center gap-1 ml-4 border-l border-slate-200 pl-4">
-               <button 
-                 onClick={handleUndo} 
-                 disabled={historyIndex === 0}
-                 className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md disabled:opacity-30 transition-colors"
-                 title="Undo (Ctrl+Z)"
-               >
-                   <Undo2 size={18} />
-               </button>
-               <button 
-                 onClick={handleRedo} 
-                 disabled={historyIndex === history.length - 1}
-                 className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md disabled:opacity-30 transition-colors"
-                 title="Redo (Ctrl+Shift+Z)"
-               >
-                   <Redo2 size={18} />
-               </button>
-           </div>
-        </div>
-        <div className="flex items-center gap-3">
-           <button onClick={() => setShowAiModal(true)} className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-full text-sm font-medium hover:bg-purple-100 transition-colors"><Sparkles size={16} /><span>AI Generate</span></button>
-           <button onClick={() => setShowCode(!showCode)} className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${showCode ? 'bg-slate-900 text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'}`}><Code size={16} /><span>{showCode ? 'Editor' : 'Export'}</span></button>
-        </div>
-      </header>
+      <Header 
+        historyIndex={historyIndex}
+        historyLength={history.length}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        onAiOpen={() => setShowAiModal(true)}
+        showCode={showCode}
+        onToggleCode={() => setShowCode(!showCode)}
+        framework={framework}
+        onFrameworkChange={setFramework}
+      />
 
       <div className="flex-1 flex overflow-hidden relative">
         <div className={`transition-all duration-300 ${isSidebarOpen ? 'w-64 opacity-100' : 'w-0 opacity-0 overflow-hidden'}`}>
-           <ComponentLibrary />
+           <ComponentLibrary framework={framework} />
         </div>
         <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="absolute top-4 left-4 z-20 p-1.5 bg-white border border-slate-200 rounded-md shadow-sm text-slate-500" style={{ left: isSidebarOpen ? '264px' : '16px' }}>
             {isSidebarOpen ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
@@ -641,12 +488,29 @@ export default function App() {
 
         <div className="flex-1 bg-slate-50 overflow-auto p-8 flex justify-center relative" onClick={() => setSelectedId(null)}>
             {showCode ? (
-                <div className="w-full max-w-4xl h-full bg-[#1e1e1e] text-slate-300 rounded-lg shadow-2xl overflow-hidden border border-slate-800 font-mono text-sm relative">
+                <div className="w-full max-w-4xl h-full bg-[#1e1e1e] text-slate-300 rounded-lg shadow-2xl overflow-hidden border border-slate-800 font-mono text-sm relative flex flex-col">
                     <div className="flex items-center justify-between px-4 py-3 bg-[#252526] border-b border-slate-800">
-                        <span className="text-xs text-slate-500">page.tsx</span>
+                        <div className="flex items-center gap-4">
+                            <span className="text-xs text-slate-500">{framework === 'flutter' ? 'main.dart' : 'page.tsx'}</span>
+                            {framework === 'flutter' && (
+                                <div className="flex items-center gap-2 bg-slate-800 rounded px-2 py-0.5">
+                                    <label className="text-xs text-slate-400">Type:</label>
+                                    <select 
+                                        value={flutterStateful ? 'stateful' : 'stateless'} 
+                                        onChange={(e) => setFlutterStateful(e.target.value === 'stateful')}
+                                        className="bg-transparent text-xs text-white outline-none"
+                                    >
+                                        <option value="stateless">Stateless</option>
+                                        <option value="stateful">Stateful</option>
+                                    </select>
+                                </div>
+                            )}
+                        </div>
                         <button className="text-slate-400 hover:text-white"><Download size={16} /></button>
                     </div>
-                    <pre className="p-4 overflow-auto h-[calc(100%-44px)]">{generateFullCode(rootNode)}</pre>
+                    <pre className="p-4 overflow-auto flex-1">
+                        {framework === 'flutter' ? generateFlutterCode(rootNode, 'MyPage', flutterStateful) : generateFullCode(rootNode)}
+                    </pre>
                 </div>
             ) : (
                 <div className="w-full h-full min-h-[800px] bg-white shadow-sm border border-slate-200 rounded-lg overflow-hidden transition-all">
@@ -658,7 +522,6 @@ export default function App() {
                         onDelete={handleDelete}
                         onDuplicate={handleDuplicate}
                         onWrap={handleWrap}
-                        // Property updates trigger history update
                         onResize={(id, style) => updateRootNode(prev => updateNodeStyle(prev, id, style))}
                         onUpdate={(id, ups) => updateRootNode(prev => updateNode(prev, id, ups))}
                     />

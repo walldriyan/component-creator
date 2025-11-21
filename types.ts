@@ -1,14 +1,23 @@
 
-export type ComponentType = 'container' | 'text' | 'button' | 'input' | 'textarea' | 'checkbox' | 'switch' | 'select' | 'card' | 'image' | 'icon' | 'divider' | 'label' | 'table' | 'form' | 'avatarGroup' | 'interaction' | 'dropdown' | 'list' | 'tabs';
+export type ComponentType = 'container' | 'text' | 'button' | 'input' | 'textarea' | 'checkbox' | 'switch' | 'select' | 'card' | 'image' | 'icon' | 'divider' | 'label' | 'table' | 'form' | 'avatarGroup' | 'interaction' | 'dropdown' | 'list' | 'tabs' | 'accordion' | 'scaffold' | 'row' | 'column';
 
 export type LibraryType = 'radix' | 'shadcn' | 'plain';
+
+export type FrameworkType = 'nextjs' | 'flutter';
 
 export interface StyleProps {
   backgroundColor?: string;
   color?: string;
   padding?: string;
+  paddingTop?: string;
+  paddingBottom?: string;
+  paddingLeft?: string;
+  paddingRight?: string;
   margin?: string;
   marginBottom?: string;
+  marginTop?: string;
+  marginLeft?: string;
+  marginRight?: string;
   width?: string;
   height?: string;
   minHeight?: string;
@@ -23,7 +32,7 @@ export interface StyleProps {
   borderTop?: string;
   borderLeft?: string;
   flexDirection?: 'row' | 'column';
-  justifyContent?: 'flex-start' | 'center' | 'flex-end' | 'space-between';
+  justifyContent?: 'flex-start' | 'center' | 'flex-end' | 'space-between' | 'space-around';
   alignItems?: 'flex-start' | 'center' | 'flex-end' | 'stretch';
   flexGrow?: number;
   overflow?: 'visible' | 'hidden' | 'scroll' | 'auto';
@@ -67,7 +76,7 @@ export interface DragItem {
 // Initial state helper
 export const initialCanvas: ComponentNode = {
   id: 'root',
-  type: 'container',
+  type: 'container', // Will be treated as Scaffold in Flutter mode logic if root
   name: 'Root Page',
   library: 'radix',
   props: {},

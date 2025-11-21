@@ -1,4 +1,5 @@
 
+
 import { ComponentNode, StyleProps } from "../types";
 
 const styleToTailwind = (style: StyleProps, type: string): string => {
@@ -14,8 +15,16 @@ const styleToTailwind = (style: StyleProps, type: string): string => {
 
   // Spacing
   if (style.padding) classes.push(`p-[${style.padding}]`);
+  if (style.paddingTop) classes.push(`pt-[${style.paddingTop}]`);
+  if (style.paddingBottom) classes.push(`pb-[${style.paddingBottom}]`);
+  if (style.paddingLeft) classes.push(`pl-[${style.paddingLeft}]`);
+  if (style.paddingRight) classes.push(`pr-[${style.paddingRight}]`);
+
   if (style.margin) classes.push(`m-[${style.margin}]`);
   if (style.marginBottom) classes.push(`mb-[${style.marginBottom}]`);
+  if (style.marginTop) classes.push(`mt-[${style.marginTop}]`);
+  if (style.marginLeft) classes.push(`ml-[${style.marginLeft}]`);
+  if (style.marginRight) classes.push(`mr-[${style.marginRight}]`);
 
   // Sizing
   if (style.width === '100%') classes.push('w-full');
@@ -67,7 +76,7 @@ const generateComponentCode = (node: ComponentNode, indentLevel: number = 0): st
   const indent = '  '.repeat(indentLevel);
   const className = styleToTailwind(node.style, node.type);
   const props = Object.entries(node.props)
-    .filter(([key]) => !['data', 'customColumns', 'fields', 'images', 'max', 'items', 'label', 'pagination', 'itemsPerPage', 'activeTab'].includes(key)) // handled separately
+    .filter(([key]) => !['data', 'customColumns', 'fields', 'images', 'max', 'items', 'label', 'pagination', 'itemsPerPage', 'activeTab', 'allowMultiple'].includes(key)) // handled separately
     .map(([key, val]) => `${key}={${typeof val === 'string' ? `"${val}"` : `{${val}}`}}`)
     .join(' ');
 
@@ -139,6 +148,12 @@ const generateComponentCode = (node: ComponentNode, indentLevel: number = 0): st
       return `${indent}<div className="${className}">\n${indent}  <DropdownMenu label="${node.props.label}" items={${itemsVar}} />\n${indent}</div>`;
   }
 
+  if (node.type === 'accordion') {
+      const itemsVar = `accordionItems_${node.id.replace(/-/g, '_')}`;
+      const contentMapVar = `accordionContent_${node.id.replace(/-/g, '_')}`;
+      return `${indent}<div className="${className}">\n${indent}  <Accordion items={${itemsVar}} allowMultiple={${node.props.allowMultiple}} contentMap={${contentMapVar}} />\n${indent}</div>`;
+  }
+
   return `${indent}<div className="${className}">Unknown Component</div>`;
 };
 
@@ -153,6 +168,7 @@ export const generateFullCode = (root: ComponentNode): string => {
   let hasTabs = false;
   let hasList = false;
   let hasDropdown = false;
+  let hasAccordion = false;
 
   // Recursive scanner
   const scan = (node: ComponentNode) => {
@@ -173,6 +189,11 @@ export const generateFullCode = (root: ComponentNode): string => {
       }
       if (node.type === 'dropdown') { 
           hasDropdown = true; 
+          icons.add('ChevronDown');
+          if (node.props.items) node.props.items.forEach((i: any) => i.icon && icons.add(i.icon));
+      }
+      if (node.type === 'accordion') {
+          hasAccordion = true;
           icons.add('ChevronDown');
           if (node.props.items) node.props.items.forEach((i: any) => i.icon && icons.add(i.icon));
       }
@@ -381,6 +402,59 @@ const DropdownMenu = React.memo(({ label, items }) => {
 });\n\n`;
   }
 
+  if (hasAccordion) {
+      code += `
+const Accordion = React.memo(({ items, allowMultiple, contentMap }) => {
+  const [openItems, setOpenItems] = useState([]);
+  
+  const toggle = useCallback((id) => {
+      setOpenItems(prev => {
+          if (allowMultiple) {
+              return prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id];
+          }
+          return prev.includes(id) ? [] : [id];
+      });
+      console.log('Accordion Toggled:', id);
+  }, [allowMultiple]);
+
+  return (
+      <div className="w-full flex flex-col gap-2">
+          {items.map((item) => {
+              const isOpen = openItems.includes(item.id);
+              return (
+                  <div key={item.id} className="border border-slate-200 rounded-lg bg-white overflow-hidden shadow-sm transition-all">
+                      <button 
+                          onClick={() => toggle(item.id)}
+                          className="w-full flex items-center justify-between p-3 text-sm font-medium text-slate-900 hover:bg-slate-50 transition-colors"
+                      >
+                          <div className="flex items-center gap-2">
+                              {item.icon && <DynamicIcon name={item.icon} size={16} className="text-slate-500" />}
+                              {item.title}
+                          </div>
+                          <DynamicIcon name="ChevronDown" className={\`text-slate-400 transition-transform duration-200 \${isOpen ? "rotate-180" : ""}\`} />
+                      </button>
+                      
+                      <div 
+                        className={\`grid transition-all duration-300 ease-in-out \${isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}\`}
+                      >
+                        <div className="overflow-hidden">
+                            <div className="p-3 pt-0 text-sm text-slate-600 border-t border-transparent">
+                                <div className="pt-2">
+                                   {contentMap && contentMap[item.id] ? contentMap[item.id] : (
+                                       <div dangerouslySetInnerHTML={{ __html: item.content || 'No content' }} />
+                                   )}
+                                </div>
+                            </div>
+                        </div>
+                      </div>
+                  </div>
+              );
+          })}
+      </div>
+  );
+});\n\n`;
+  }
+
   // Table Code
   if (hasTable) {
       code += `const Table = ({ data, customColumns, actionLabel }) => { \n  /* ... Table Implementation ... */ \n  return <div className="border rounded-lg p-4">Table Component Placeholder</div>;\n};\n\n`;
@@ -413,6 +487,14 @@ const DropdownMenu = React.memo(({ label, items }) => {
       }
       if (node.type === 'dropdown') {
           code += `  const dropdownItems_${node.id.replace(/-/g, '_')} = ${JSON.stringify(node.props.items, null, 2)};\n`;
+      }
+      if (node.type === 'accordion') {
+          code += `  const accordionItems_${node.id.replace(/-/g, '_')} = ${JSON.stringify(node.props.items, null, 2)};\n`;
+          code += `  const accordionContent_${node.id.replace(/-/g, '_')} = {\n`;
+          node.props.items?.forEach((item: any) => {
+             code += `    "${item.id}": <div className="text-slate-600">This is injected content for <strong>${item.title}</strong></div>,\n`;
+          });
+          code += `  };\n`;
       }
       if (node.type === 'form') {
           let schemaStr = 'z.object({';

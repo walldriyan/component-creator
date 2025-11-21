@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { ComponentNode, LibraryType } from '../types';
-import { Settings2, Layout, Palette, Square, Star, Ban, MousePointerClick, Move, Code, TableProperties, MousePointer2, Plus, Trash2, Image as ImageIcon, Type, FileText, Server, Link as LinkIcon, CheckCircle, Users, ThumbsUp, List, AppWindow, MoreVertical } from 'lucide-react';
+import { Settings2, Layout, Palette, Square, Star, Ban, MousePointerClick, Move, Code, TableProperties, MousePointer2, Plus, Trash2, Image as ImageIcon, Type, FileText, Server, Link as LinkIcon, CheckCircle, Users, ThumbsUp, List, AppWindow, MoreVertical, FoldVertical } from 'lucide-react';
 
 interface PropertiesPanelProps {
   node: ComponentNode | null;
@@ -223,6 +223,29 @@ export default function PropertiesPanel({ node, onChange, onStyleChange }: Prope
                             defaultValue={JSON.stringify(node.props.items || [], null, 2)}
                             onBlur={(e) => handleJsonChange(e.target.value, 'items')}
                             placeholder='[{"id":"1", "label":"Tab 1", "icon":"Home", "content":"Optional HTML"}]'
+                        />
+                    </div>
+                </div>
+            </section>
+        )}
+
+        {/* Accordion Properties */}
+        {node.type === 'accordion' && (
+            <section>
+                <h3 className={sectionHeaderClass}><FoldVertical size={14} /> Accordion Configuration</h3>
+                <div className="space-y-3">
+                     <div className="flex items-center gap-2">
+                        <input type="checkbox" id="allowMultiple" className="rounded border-gray-300 text-blue-600" checked={!!node.props.allowMultiple} onChange={(e) => onChange({ props: { ...node.props, allowMultiple: e.target.checked } })} />
+                        <label htmlFor="allowMultiple" className="text-sm text-gray-700">Allow Multiple Open</label>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1.5">Accordion Items (JSON)</label>
+                        <p className="text-[10px] text-blue-600 mb-1">Use 'icon' for dynamic icons.</p>
+                        <textarea 
+                            className={`${inputClass} font-mono text-xs h-40 resize-y`} 
+                            defaultValue={JSON.stringify(node.props.items || [], null, 2)}
+                            onBlur={(e) => handleJsonChange(e.target.value, 'items')}
+                            placeholder='[{"id":"1", "title":"Item 1", "icon":"Plus", "content":"Content..."}]'
                         />
                     </div>
                 </div>

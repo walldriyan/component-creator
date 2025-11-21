@@ -1,7 +1,8 @@
 
+
 import React, { MouseEvent, useRef, useState, useLayoutEffect, useEffect, useMemo, useCallback } from 'react';
 import { ComponentNode } from '../types';
-import { Settings, Home, User, Bell, Search, Menu, Star, Heart, Share, ArrowRight, Box, Check, X, Layout, Maximize2, Scaling, Copy, CreditCard, Link as LinkIcon, Image as ImageIcon, Square, Minimize2, MoveHorizontal, MoveVertical, ChevronDown, ArrowUp, ArrowDown, AlignCenter, AlignLeft, ArrowRightFromLine, ArrowDownFromLine, Trash2, Minimize, Maximize, ChevronLeft, ChevronRight, Edit, Eye, MoreHorizontal, Plus, Download, Upload, FileText, ThumbsUp, ThumbsDown, Lock, File, Bug, Server, PenTool, Trash } from 'lucide-react';
+import { Settings, Home, User, Bell, Search, Menu, Star, Heart, Share, ArrowRight, Box, Check, X, Layout, Maximize2, Scaling, Copy, CreditCard, Link as LinkIcon, Image as ImageIcon, Square, Minimize2, MoveHorizontal, MoveVertical, ChevronDown, ArrowUp, ArrowDown, AlignCenter, AlignLeft, ArrowRightFromLine, ArrowDownFromLine, Trash2, Minimize, Maximize, ChevronLeft, ChevronRight, Edit, Eye, MoreHorizontal, Plus, Download, Upload, FileText, ThumbsUp, ThumbsDown, Lock, File, Bug, Server, PenTool, Trash, Palette, Sparkles } from 'lucide-react';
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -13,7 +14,7 @@ function cn(...inputs: ClassValue[]) {
 const IconMap: Record<string, any> = {
   Home, User, Settings, Bell, Search, Menu, Star, Heart, Share, ArrowRight, Box, Check, X, Layout,
   Edit, Eye, Trash2, MoreHorizontal, Plus, Download, Upload, ChevronRight, ChevronLeft, FileText, ThumbsUp, ThumbsDown,
-  Lock, File, Bug, Server, PenTool, Trash, Copy
+  Lock, File, Bug, Server, PenTool, Trash, Copy, Palette, Sparkles
 };
 
 interface CanvasProps {
@@ -69,9 +70,21 @@ const getComponentClasses = (node: ComponentNode, isSelected: boolean) => {
 
     style.backgroundColor ? `bg-[${style.backgroundColor}]` : '',
     style.color ? `text-[${style.color}]` : '',
+    
+    // Padding
     style.padding ? `p-[${style.padding}]` : '',
+    style.paddingTop ? `pt-[${style.paddingTop}]` : '',
+    style.paddingBottom ? `pb-[${style.paddingBottom}]` : '',
+    style.paddingLeft ? `pl-[${style.paddingLeft}]` : '',
+    style.paddingRight ? `pr-[${style.paddingRight}]` : '',
+
+    // Margin
     style.margin ? `m-[${style.margin}]` : '',
     style.marginBottom ? `mb-[${style.marginBottom}]` : '',
+    style.marginTop ? `mt-[${style.marginTop}]` : '',
+    style.marginLeft ? `ml-[${style.marginLeft}]` : '',
+    style.marginRight ? `mr-[${style.marginRight}]` : '',
+
     style.borderRadius ? `rounded-[${style.borderRadius}]` : '',
     (style.borderWidth && style.borderWidth !== '0px') ? `border-[${style.borderWidth}]` : '',
     style.borderColor ? `border-[${style.borderColor}]` : '',
@@ -480,6 +493,57 @@ const TabsRenderer = ({ node }: { node: ComponentNode }) => {
     );
 };
 
+// --- Accordion Renderer ---
+const AccordionRenderer = ({ node }: { node: ComponentNode }) => {
+    const [openItems, setOpenItems] = useState<string[]>([]);
+    const allowMultiple = node.props.allowMultiple || false;
+
+    const toggle = (id: string) => {
+        if (allowMultiple) {
+            setOpenItems(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+        } else {
+            setOpenItems(prev => prev.includes(id) ? [] : [id]);
+        }
+        console.log('Accordion Event: Toggle', id);
+    };
+
+    return (
+        <div className="w-full flex flex-col gap-2">
+            {node.props.items?.map((item: any) => {
+                const isOpen = openItems.includes(item.id);
+                const Icon = item.icon ? IconMap[item.icon] : null;
+                return (
+                    <div key={item.id} className="border border-slate-200 rounded-lg bg-white overflow-hidden transition-all shadow-sm">
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); toggle(item.id); }}
+                            className="w-full flex items-center justify-between p-3 text-sm font-medium text-slate-900 hover:bg-slate-50 transition-colors"
+                        >
+                            <div className="flex items-center gap-2">
+                                {Icon && <Icon size={16} className="text-slate-500" />}
+                                {item.title}
+                            </div>
+                            <ChevronDown size={16} className={cn("text-slate-400 transition-transform duration-200", isOpen && "rotate-180")} />
+                        </button>
+                        
+                        {/* Simulation of Height Animation for Preview */}
+                        {isOpen && (
+                             <div className="p-3 pt-0 text-sm text-slate-600 border-t border-transparent animate-in fade-in duration-200">
+                                <div className="pt-2">
+                                    {item.content ? (
+                                        <div dangerouslySetInnerHTML={{ __html: item.content }} />
+                                    ) : (
+                                        <div className="text-slate-400 italic">Content for "{item.title}"</div>
+                                    )}
+                                </div>
+                             </div>
+                        )}
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
+
 // --- Dynamic List Renderer ---
 const ListRenderer = ({ node }: { node: ComponentNode }) => {
     const items = node.props.items || [];
@@ -640,7 +704,7 @@ const CanvasRenderer: React.FC<CanvasProps> = React.memo(({ node, selectedId, on
     const height = rect.height;
     const relativeY = e.clientY - rect.top;
     
-    const isLeaf = ['text', 'image', 'input', 'icon', 'switch', 'checkbox', 'divider', 'textarea', 'select', 'table', 'form', 'avatarGroup', 'interaction', 'tabs', 'list', 'dropdown'].includes(node.type);
+    const isLeaf = ['text', 'image', 'input', 'icon', 'switch', 'checkbox', 'divider', 'textarea', 'select', 'table', 'form', 'avatarGroup', 'interaction', 'tabs', 'list', 'dropdown', 'accordion'].includes(node.type);
     const canAcceptChildren = !isLeaf;
     
     let newPosition: 'top' | 'bottom' | 'inside' | null = null;
@@ -749,6 +813,7 @@ const CanvasRenderer: React.FC<CanvasProps> = React.memo(({ node, selectedId, on
       if (node.type === 'tabs') return <TabsRenderer node={node} />;
       if (node.type === 'list') return <ListRenderer node={node} />;
       if (node.type === 'dropdown') return <DropdownRenderer node={node} />;
+      if (node.type === 'accordion') return <AccordionRenderer node={node} />;
 
       return null;
   };
