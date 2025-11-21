@@ -68,11 +68,15 @@ export default function ComponentLibrary({ framework }: { framework: FrameworkTy
           <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Advanced</h3>
           <DraggableItem type="list" label={framework === 'flutter' ? 'ListView' : 'Dynamic List'} icon={List} onDragStart={handleDragStart} />
           <DraggableItem type="avatarGroup" label="Avatar Group" icon={Users} onDragStart={handleDragStart} />
+          
+          {/* Enabled for both frameworks now */}
+          <DraggableItem type="table" label={framework === 'flutter' ? 'DataTable' : 'Smart Table'} icon={Table} onDragStart={handleDragStart} />
+          <DraggableItem type="form" label="Smart Form" icon={FileText} onDragStart={handleDragStart} />
+          <DraggableItem type="dropdown" label="Menu Dropdown" icon={MoreVertical} onDragStart={handleDragStart} />
+
           {framework === 'nextjs' && (
              <>
-                <DraggableItem type="table" label="Smart Table" icon={Table} onDragStart={handleDragStart} />
-                <DraggableItem type="form" label="Smart Form" icon={FileText} onDragStart={handleDragStart} />
-                <DraggableItem type="dropdown" label="Menu Dropdown" icon={MoreVertical} onDragStart={handleDragStart} />
+                 {/* Next.js specific if any, currently all are shared or mapped */}
              </>
           )}
           <DraggableItem type="interaction" label="Social Interaction" icon={ThumbsUp} onDragStart={handleDragStart} />

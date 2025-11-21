@@ -1,5 +1,4 @@
 
-
 import React, { useState, useCallback, useEffect } from 'react';
 import ComponentLibrary from './components/ComponentLibrary';
 import CanvasRenderer from './components/Canvas';
@@ -277,7 +276,9 @@ export default function App() {
             base.props.fields = [
                 { id: 'f1', name: 'email', label: 'Email Address', type: 'email', placeholder: 'john@example.com', required: true },
                 { id: 'f2', name: 'subject', label: 'Subject', type: 'text', placeholder: 'How can we help?', required: true },
-                { id: 'f3', name: 'message', label: 'Message', type: 'textarea', placeholder: 'Describe your issue...', required: true }
+                { id: 'f3', name: 'priority', label: 'Priority', type: 'select', options: ['Low', 'Medium', 'High'], placeholder: 'Select Priority' },
+                { id: 'f4', name: 'terms', label: 'I agree to terms', type: 'checkbox', required: true },
+                { id: 'f5', name: 'message', label: 'Message', type: 'textarea', placeholder: 'Describe your issue...', required: true }
             ];
             base.style = { ...base.style, width: '100%' };
             break;
